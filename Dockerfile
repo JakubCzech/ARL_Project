@@ -14,6 +14,8 @@ WORKDIR /root/tello_ws/src
 # Clone repositories
 RUN git clone -b eloquent https://github.com/clydemcqueen/tello_ros.git
 RUN git clone -b eloquent https://github.com/ptrmu/ros2_shared.git
+RUN git clone -b eloquent https://github.com/ptrmu/fiducial_vlam.git
+
 WORKDIR /root/tello_ws
 # Clone models
 WORKDIR /root/.gazebo/
@@ -24,7 +26,7 @@ WORKDIR /root/tello_ws
 RUN . /opt/ros/eloquent/setup.sh && \
     colcon build --symlink-install
 # Add sourcing to bashrc
-RUN echo "source opt/ros/eloquent/setup.sh" >> ~/.bashrc
+RUN echo "source /opt/ros/eloquent/setup.sh" >> ~/.bashrc
 RUN echo "source /root/tello_ws/install/setup.bash" >> ~/.bashrc
 
 
