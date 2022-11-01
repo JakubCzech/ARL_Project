@@ -1,4 +1,5 @@
 FROM osrf/ros:foxy-desktop
+LABEL org.opencontainers.image.authors="czechjakub@icloud.com"
 
 RUN apt-get update && apt-get upgrade -y && apt-get autoremove -y
 RUN apt install -y \
