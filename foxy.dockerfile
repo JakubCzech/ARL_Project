@@ -23,3 +23,4 @@ RUN . /opt/ros/foxy/setup.sh && \
 ADD ./src/start.sh .
 RUN echo "source /opt/ros/foxy/setup.sh" >> ~/.bashrc
 RUN echo "source /root/tello_ws/install/setup.bash" >> ~/.bashrc
+RUN echo "alias start='colcon build && . install/setup.bash  && ros2 run tello_arl controller'" >> ~/.bashrc 
