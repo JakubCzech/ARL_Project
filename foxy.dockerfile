@@ -13,13 +13,16 @@ WORKDIR /root/tello_ws/src
 ADD ./src_files/tello_arl ./tello_arl
 RUN git clone https://github.com/clydemcqueen/tello_ros.git
 RUN git clone https://github.com/ptrmu/ros2_shared.git
-RUN git clone https://github.com/lapo5/ROS2-Aruco-TargetTracking.git
+RUN git clone https://github.com/JMU-ROBOTICS-VIVA/ros2_aruco.git
 
-RUN mv ROS2-Aruco-TargetTracking/ camera_target_tracking
 WORKDIR /root/tello_ws
-
+# Change ros packages file to custom 
+ADD ./src_files/aruco_node.py /root/tello_ws/src/ros2_aruco/ros2_aruco/ros2_aruco/aruco_node.py
+ADD ./src_files/f2.world /root/tello_ws/src/tello_ros/tello_gazebo/worlds/f2.world
+# Build all
 RUN . /opt/ros/foxy/setup.sh && \
     colcon build --symlink-install
+# Add start script
 ADD ./src_files/start.sh .
 ADD ./src_files/simple_launch.py /root/tello_ws/src/tello_ros/tello_gazebo/launch/simple_launch.py
 ADD ./src_files/.gazebo /root/.gazebo
