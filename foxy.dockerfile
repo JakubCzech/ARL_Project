@@ -21,8 +21,13 @@ WORKDIR /root/tello_ws
 RUN . /opt/ros/foxy/setup.sh && \
     colcon build --symlink-install
 ADD ./src_files/start.sh .
-RUN cp -r /root/tello_ws/src/tello_ros/tello_gazebo/models/* ~/.gazebo/
 ADD ./src_files/simple_launch.py /root/tello_ws/src/tello_ros/tello_gazebo/launch/simple_launch.py
+ADD ./src_files/.gazebo /root/.gazebo
+
 RUN echo "source /opt/ros/foxy/setup.sh" >> ~/.bashrc
 RUN echo "source /root/tello_ws/install/setup.bash" >> ~/.bashrc
 RUN echo "alias start='colcon build && . install/setup.bash  && ros2 run tello_arl controller'" >> ~/.bashrc 
+RUN echo "ros2 launch tello_gazebo simple_launch.py" >> ~/.bash_history
+RUN echo "ros2 service call /reset_simulation std_srvs/srv/Empty" >> ~/.bash_history
+RUN echo "ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -r __ns:=/drone1" >> ~/.bash_history
+
