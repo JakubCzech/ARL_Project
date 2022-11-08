@@ -20,7 +20,7 @@ WORKDIR /root/tello_ws
 
 RUN . /opt/ros/foxy/setup.sh && \
     colcon build --symlink-install
-ADD ./src/start.sh .
+ADD ./src_files/start.sh .
 RUN cp -r /root/tello_ws/src/tello_ros/tello_gazebo/models/* ~/.gazebo/
 ADD ./src_files/simple_launch.py /root/tello_ws/src/tello_ros/tello_gazebo/launch/simple_launch.py
 RUN echo "source /opt/ros/foxy/setup.sh" >> ~/.bashrc
