@@ -4,18 +4,24 @@ from rclpy.node import Node
 from tello_msgs.msg import FlightData
 from geometry_msgs.msg import Twist, Pose, PoseArray
 from sensor_msgs.msg import Image
+from scipy.spatial import transform
 import rclpy
-
-OFFSET = 0.05
-DISTANCE = 1.0
-SPEED = 0.05
+from math import sin, cos, pi
 
 
 class TelloARL(Node):
     def __init__(self):
         super().__init__("tello_arl")
+
+        self.offset = 0.05
+        self.distance = 0.5
+        self.linear_speed = 0.05
+        self.angular_speed = 0.1
+        self.offset_rotation = 0.05
+        self.frequency = 10
+
         self.__init_variables()
-        self.get_logger().debug("TelloARL node has been started")
+        self.get_logger().info("TelloARL node has been started")
         # DEBUG, INFO, WARN, ERROR, FATAL debug for development, info for production
         self._logger.set_level(rclpy.logging.LoggingSeverity.INFO)
         self._sub_cam = self.create_subscription(
@@ -37,13 +43,15 @@ class TelloARL(Node):
             10,
         )
         self._pub_cmd_vel = self.create_publisher(Twist, "/drone1/cmd_vel", 10)
-        self.create_timer(0.1, self.timer_callback)
+        self.create_timer(1 / self.frequency, self.timer_callback)
 
     def __init_variables(self):
         self._flight_data = FlightData()
         self._twist = Twist()
         self._image = Image()
         self._aruco_pose = Pose()
+        self.__new_cmd = None
+        self.last_direction = None
 
     def camera_callback(self, msg):
         self.get_logger().debug("Camera callback")
@@ -54,60 +62,100 @@ class TelloARL(Node):
         self._flight_data = msg
 
     def aruco_pose_callback(self, msg):
-        self.get_logger().debug("Aruco pose callback")
         self._aruco_pose = msg.poses[0]
+        _, self.pitch, _ = transform.Rotation.from_quat(
+            [
+                self._aruco_pose.orientation.x,
+                self._aruco_pose.orientation.y,
+                self._aruco_pose.orientation.z,
+                self._aruco_pose.orientation.w,
+            ]
+        ).as_euler("xyz")
+        self.get_logger().info(
+            f"New aruco pose: {self._aruco_pose.position.x}, {self._aruco_pose.position.y}, {self._aruco_pose.position.z}, {self.pitch}"
+        )
+
+        self.__set_linear_velocity()
+        self.__set_angular_velocity()
+        self.__new_cmd = True
 
     def timer_callback(self):
         self.get_logger().debug("Timer callback")
         self.get_logger().debug(
             f"Battery: {self._flight_data.bat}, Height: {self._flight_data.h}"
         )
-        self.get_logger().debug(f"Aruco pose: {self._aruco_pose}")
+        if self.__new_cmd:
+            self.__send_cmd()
+            self.__new_cmd = False
+        else:
+            self._twist = Twist()
+            if self.last_direction:
+                self._twist.angular.z = self.last_direction
+            else:
+                self._twist.angular.z = 0.005
+            self.__send_cmd()
+
+    def __set_angular_velocity(self):
+        if self.pitch != 0.0:
+            if self.pitch > self.offset_rotation:
+                self.get_logger().debug("Turn left")
+                self._twist.angular.z = -self.angular_speed
+                self.last_direction = -self.angular_speed
+            elif self.pitch < -self.offset_rotation:
+                self.get_logger().debug("Turn right")
+                self._twist.angular.z = +self.angular_speed
+                self.last_direction = +self.angular_speed
+            else:
+                self._twist.angular.z = 0.0
+                self.get_logger().debug("Stop")
+
+    def __set_linear_velocity(self):
         if self._aruco_pose.position.z != 0.0:
-            if self._aruco_pose.position.z > DISTANCE + OFFSET:
-                self.get_logger().info("Move front")
-                self._twist.linear.x = SPEED
-            elif self._aruco_pose.position.z < DISTANCE - OFFSET:
-                self.get_logger().info("Move back")
-                self._twist.linear.x = -SPEED
+            if self._aruco_pose.position.z > self.distance + self.offset:
+                self.get_logger().debug("Move front")
+                self._twist.linear.x = self.linear_speed
+            elif self._aruco_pose.position.z < self.distance - self.offset:
+                self.get_logger().debug("Move back")
+                self._twist.linear.x = -self.linear_speed
             else:
                 self._twist.linear.x = 0.0
-                self.get_logger().info("Stop")
+                self.get_logger().debug("Stop")
         else:
             self._twist.linear.x = 0.0
-            self.get_logger().info("Stop")
+            self.get_logger().debug("Stop")
 
         if self._aruco_pose.position.x != 0.0:
-            if self._aruco_pose.position.x < -OFFSET:
-                self.get_logger().info("Move left")
-                self._twist.linear.y = SPEED
-            elif self._aruco_pose.position.x > OFFSET:
-                self.get_logger().info("Move right")
-                self._twist.linear.y = -SPEED
+            if self._aruco_pose.position.x < -self.offset:
+                self.get_logger().debug("Move left")
+                self._twist.linear.y = self.linear_speed
+            elif self._aruco_pose.position.x > self.offset:
+                self.get_logger().debug("Move right")
+                self._twist.linear.y = -self.linear_speed
             else:
                 self._twist.linear.y = 0.0
-                self.get_logger().info("Stop")
+                self.get_logger().debug("Stop")
         else:
             self._twist.linear.y = 0.0
-            self.get_logger().info("Stop")
+            self.get_logger().debug("Stop")
 
         if self._aruco_pose.position.y != 0.0:
-            if self._aruco_pose.position.y < -OFFSET:
-                self.get_logger().info("Move up")
-                self._twist.linear.z = SPEED
-            elif self._aruco_pose.position.y > OFFSET:
-                self.get_logger().info("Move down")
-                self._twist.linear.z = -SPEED
+            if self._aruco_pose.position.y < -self.offset:
+                self.get_logger().debug("Move up")
+                self._twist.linear.z = self.linear_speed
+            elif self._aruco_pose.position.y > self.offset:
+                self.get_logger().debug("Move down")
+                self._twist.linear.z = -self.linear_speed
             else:
                 self._twist.linear.z = 0.0
-                self.get_logger().info("Stop")
+                self.get_logger().debug("Stop")
 
         else:
             self._twist.linear.z = 0.0
-            self.get_logger().info("Stop")
+            self.get_logger().debug("Stop")
 
+    def __send_cmd(self):
         self._pub_cmd_vel.publish(self._twist)
-        self.get_logger().info(f"Distance to aruco: {self._aruco_pose.position.z}")
+        self.get_logger().debug(f"Distance to aruco: {self._aruco_pose.position.z}")
 
     def __del__(self):
         self.get_logger().debug("TelloARL node has been stopped")
