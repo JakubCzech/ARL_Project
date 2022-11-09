@@ -6,6 +6,10 @@ from geometry_msgs.msg import Twist, Pose, PoseArray
 from sensor_msgs.msg import Image
 import rclpy
 
+OFFSET = 0.05
+DISTANCE = 1.0
+SPEED = 0.05
+
 
 class TelloARL(Node):
     def __init__(self):
@@ -60,17 +64,51 @@ class TelloARL(Node):
         )
         self.get_logger().debug(f"Aruco pose: {self._aruco_pose}")
         if self._aruco_pose.position.z != 0.0:
-            if self._aruco_pose.position.z > 1.0:
+            if self._aruco_pose.position.z > DISTANCE + OFFSET:
                 self.get_logger().info("Move front")
-                self._twist.linear.x = 0.05
-            elif self._aruco_pose.position.z < 1.0:
+                self._twist.linear.x = SPEED
+            elif self._aruco_pose.position.z < DISTANCE - OFFSET:
                 self.get_logger().info("Move back")
-                self._twist.linear.x = -0.05
+                self._twist.linear.x = -SPEED
+            else:
+                self._twist.linear.x = 0.0
+                self.get_logger().info("Stop")
         else:
             self._twist.linear.x = 0.0
             self.get_logger().info("Stop")
+
+        if self._aruco_pose.position.x != 0.0:
+            if self._aruco_pose.position.x < -OFFSET:
+                self.get_logger().info("Move left")
+                self._twist.linear.y = SPEED
+            elif self._aruco_pose.position.x > OFFSET:
+                self.get_logger().info("Move right")
+                self._twist.linear.y = -SPEED
+            else:
+                self._twist.linear.y = 0.0
+                self.get_logger().info("Stop")
+        else:
+            self._twist.linear.y = 0.0
+            self.get_logger().info("Stop")
+
+        if self._aruco_pose.position.y != 0.0:
+            if self._aruco_pose.position.y < -OFFSET:
+                self.get_logger().info("Move up")
+                self._twist.linear.z = SPEED
+            elif self._aruco_pose.position.y > OFFSET:
+                self.get_logger().info("Move down")
+                self._twist.linear.z = -SPEED
+            else:
+                self._twist.linear.z = 0.0
+                self.get_logger().info("Stop")
+
+        else:
+            self._twist.linear.z = 0.0
+            self.get_logger().info("Stop")
+
         self._pub_cmd_vel.publish(self._twist)
         self.get_logger().info(f"Distance to aruco: {self._aruco_pose.position.z}")
 
     def __del__(self):
         self.get_logger().debug("TelloARL node has been stopped")
+        self._pub_cmd_vel.publish(Twist())
