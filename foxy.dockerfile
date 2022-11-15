@@ -19,14 +19,18 @@ WORKDIR /root/tello_ws
 # Change ros packages file to custom 
 ADD ./src_files/aruco_node.py /root/tello_ws/src/ros2_aruco/ros2_aruco/ros2_aruco/aruco_node.py
 ADD ./src_files/f2.world /root/tello_ws/src/tello_ros/tello_gazebo/worlds/f2.world
+# ADD ./src_files/simple_launch.py /root/tello_ws/src/tello_ros/tello_gazebo/launch/simple_launch.py
+ADD ./src_files/arl_project.py /root/tello_ws/src/tello_ros/tello_gazebo/launch/arl_project.py
+ADD ./src_files/tello_description_arl /root/tello_ws/src/tello_ros/tello_description_arl
 # Build all
 RUN . /opt/ros/foxy/setup.sh && \
     colcon build --symlink-install
 # Add start script
 ADD ./src_files/start.sh .
-ADD ./src_files/simple_launch.py /root/tello_ws/src/tello_ros/tello_gazebo/launch/simple_launch.py
 ADD ./src_files/.gazebo /root/.gazebo
 ADD ./src_files/.bash_history /root/.bash_history
 RUN echo "source /opt/ros/foxy/setup.sh" >> ~/.bashrc
 RUN echo "source /root/tello_ws/install/setup.bash" >> ~/.bashrc
-RUN echo "alias start='colcon build && . install/setup.bash  && ros2 launch tello_arl tello_arl.launch.py '" >> ~/.bashrc 
+RUN echo "alias _start='colcon build && . /root/tello_ws/install/setup.bash  && ros2 launch tello_arl tello_arl.launch.py '" >> ~/.bashrc 
+RUN echo "alias _sim_start='colcon build && . /root/tello_ws/install/setup.bash  && ros2 launch tello_gazebo arl_project.py '" >> ~/.bashrc 
+

@@ -8,3 +8,4 @@ ros2 run tello_arl controller
 ros2 topic echo /drone1/aruco_poses
 ros2 launch tello_gazebo simple_launch.py
 ros2 launch tello_arl tello_arl.launch.py 
+ros2 launch tello_gazebo arl_project.py
