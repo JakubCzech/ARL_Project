@@ -137,5 +137,15 @@ def generate_launch_description():
                     target_action=tello_driver_2, on_start=[drone_2_take_off]
                 )
             ),
+            Node(
+                package="ros2_aruco",
+                executable="aruco_node",
+                name="aruco_node",
+            ),
+            Node(
+                package="tello_arl",
+                executable="controller",
+                name="controller",
+            ),
         ]
     )
