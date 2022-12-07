@@ -8,11 +8,8 @@ RUN apt install -y \
 
 RUN pip3 install transformations opencv-python opencv-contrib-python scipy
 
-RUN mkdir -p /root/tello_ws
+RUN mkdir -p /root/tello_ws/src
 WORKDIR /root/tello_ws
-VOLUME [ "src_files/src" ]
-RUN . /opt/ros/foxy/setup.sh && \
-    colcon build --symlink-install
 
 ADD ./src_files/start.sh .
 ADD ./src_files/.gazebo /root/.gazebo
