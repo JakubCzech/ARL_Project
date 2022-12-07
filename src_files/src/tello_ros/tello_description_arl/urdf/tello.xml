@@ -1,0 +1,180 @@
+<?xml version="1.0"?>
+
+<robot name="tello${suffix}">
+    <material name="red">
+        <color rgba="1.0 0 0 1.0" />
+    </material>
+
+
+    <!-- Base link -->
+    <link name="base_link${suffix}">
+        <visual name="core_up">
+            <origin xyz="0 0 0.01" />
+            <geometry>
+                <box size="0.07 0.02 0.02" />
+            </geometry>
+            <material name="Cyan">
+                <color rgba="0 1.0 1.0 1.0" />
+            </material>
+        </visual>
+        <visual name="core_down">
+            <origin xyz="0 0 -0.01" />
+            <geometry>
+                <box size="0.07 0.02 0.02" />
+            </geometry>
+        </visual>
+        <visual>
+            <origin xyz="0.05 -0.05 0" />
+            <geometry>
+                <cylinder length="0.01" radius="0.045" />
+            </geometry>
+        </visual>
+        <visual>
+            <origin xyz="-0.05 0.05 0" />
+            <geometry>
+                <cylinder length="0.01" radius="0.045" />
+            </geometry>
+        </visual>
+        <visual>
+            <origin xyz="-0.05 -0.05 0" />
+            <geometry>
+                <cylinder length="0.01" radius="0.045" />
+            </geometry>
+        </visual>
+        <visual>
+            <origin xyz="0.05 0.05 0" />
+            <geometry>
+                <cylinder length="0.01" radius="0.045" />
+            </geometry>
+        </visual>
+        <inertial>
+            <mass value="0.1" />
+            <inertia ixx="0.000290833" ixy="0" ixz="0" iyy="0.00054" iyz="0" izz="0.000290833" />
+        </inertial>
+        <collision name="collision">
+            <geometry>
+                <box size="0.18 0.18 0.05" />
+            </geometry>
+        </collision>
+    </link>
+
+    <gazebo reference="base_link${suffix}">
+        <material>Gazebo/Yellow</material>
+    </gazebo>
+    <!-- Camera link -->
+    <link name="camera_link${suffix}">
+        <visual>
+            <origin xyz="0 0 0" />
+            <geometry>
+                <sphere radius="0.01" />
+            </geometry>
+        </visual>
+        <collision>
+            <geometry>
+                <sphere radius="0.01" />
+            </geometry>
+        </collision>
+        <inertial>
+            <mass value="1e-5" />
+            <inertia ixx="1e-6" ixy="0" ixz="0" iyy="1e-6" iyz="0" izz="1e-6" />
+        </inertial>
+    </link>
+    <!--Include Aruco Model from .gazebo/models/Ar_tags -->
+    <link name='aruco_${suffix}'>
+        <visual name='visual'>
+            <origin xyz="0 0 0"/>
+            <geometry>
+                <mesh>
+                    <uri>model://Ar_tags/meshes/Ar_tag.dae</uri>
+                    <scale>1 1 1</scale>
+                </mesh>
+            </geometry>
+            <material>
+                <script>
+                    <uri>model://Ar_tags/materials/scripts</uri>
+                    <uri>model://Ar_tags/materials/textures</uri>
+                    <name>Ar_tags</name>
+                </script>
+            </material>
+            <cast_shadows>1</cast_shadows>
+            <transparency>0</transparency>
+        </visual>
+        <collision name='collision'>
+            <laser_retro>0</laser_retro>
+            <max_contacts>10</max_contacts>
+            <pose frame=''>0 0 0 0 -0 0</pose>
+            <geometry>
+                <mesh>
+                    <uri>model://Ar_tags/meshes/Ar_tag.dae</uri>
+                    <scale>1 1 1</scale>
+                </mesh>
+            </geometry>
+        </collision>
+    </link>
+
+
+    <!-- Fixed joint -->
+    <joint name="camera_joint${suffix}" type="fixed">
+        <origin xyz="0.035 0 0" rpy="0 0 0" /> <!-- TODO fix origin -->
+        <parent link="base_link${suffix}" />
+        <child link="camera_link${suffix}" />
+    </joint>
+
+    <joint name="aruco_joint${suffix}" type="fixed">
+        <origin xyz="0.0 0 -0.1089" rpy="0 1.57 0" /> <!-- TODO fix origin -->
+        <parent link="base_link${suffix}" />
+        <child link="aruco_${suffix}" />
+    </joint>
+
+
+    <!-- Tello plugin for Gazebo -->
+    <gazebo>
+        <plugin name="TelloPlugin" filename="libTelloPlugin.so">
+            <namespace>${topic_ns}</namespace>
+            <parameter name="use_sim_time" type="bool">1</parameter>
+            <link_name>base_link${suffix}</link_name>
+            <center_of_mass>0 0 0</center_of_mass>
+        </plugin>
+    </gazebo>
+    <gazebo reference="camera_link${suffix}">
+        <sensor type="camera" name="${topic_ns}">
+            <update_rate>30.0</update_rate>
+            <camera name="head">
+                <!-- TODO does this name do anything? -->
+                <horizontal_fov>0.96</horizontal_fov>
+                <image>
+                    <width>960</width>
+                    <height>720</height>
+                    <format>R8G8B8</format>
+                </image>
+                <clip>
+                    <near>0.1</near>
+                    <far>300</far>
+                </clip>
+                <noise>
+                    <type>gaussian</type>
+                    <!-- Noise is sampled independently per pixel on each frame.
+                         That pixel's noise value is added to each of its color
+                         channels, which at that point lie in the range [0,1]. -->
+                    <mean>0.0</mean>
+                    <stddev>0.007</stddev>
+                </noise>
+            </camera>
+            <plugin name="camera_controller${suffix}" filename="libgazebo_ros_camera.so">
+                <alwaysOn>true</alwaysOn>
+                <updateRate>0.0</updateRate>
+                <cameraName>this_is_ignored</cameraName>
+                <imageTopicName>image_raw</imageTopicName>
+                <cameraInfoTopicName>camera_info</cameraInfoTopicName>
+                <frameName>camera_link${suffix}</frameName>
+                <hackBaseline>0.07</hackBaseline>
+                <distortionK1>0.0</distortionK1>
+                <distortionK2>0.0</distortionK2>
+                <distortionK3>0.0</distortionK3>
+                <distortionT1>0.0</distortionT1>
+                <distortionT2>0.0</distortionT2>
+            </plugin>
+        </sensor>
+        <material>Gazebo/Blue</material>
+    </gazebo>
+</robot>

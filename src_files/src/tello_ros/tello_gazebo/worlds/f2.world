@@ -20,13 +20,13 @@
     </include>
 
     <!-- ArUco markers -->
-    <model name="marker0">
+    <!-- <model name="marker0">
       <include>
         <static>true</static>
         <uri>model://marker_0</uri>
       </include>
       <pose>0.5 1 1 0 -1.5707963267948966 0</pose>
-    </model>
+    </model> -->
     <model name="marker1">
       <include>
         <static>true</static>
@@ -34,7 +34,7 @@
       </include>
       <pose>0.5 2 1 0 -1.5707963267948966 0</pose>
     </model>
-    <model name="marker2">
+    <!-- <model name="marker2">
       <include>
         <static>true</static>
         <uri>model://marker_2</uri>
@@ -75,7 +75,7 @@
         <uri>model://marker_7</uri>
       </include>
       <pose>-3.5 1 1 0 -1.5707963267948966 3.141592653589793</pose>
-    </model>
+    </model> -->
 
   </world>
 </sdf>
