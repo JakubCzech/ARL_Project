@@ -5,45 +5,72 @@ from tello_msgs.msg import FlightData
 from geometry_msgs.msg import Twist, Pose, PoseArray
 from sensor_msgs.msg import Image
 from scipy.spatial import transform
-import rclpy
-from math import sin, cos, pi
 
 
 class TelloARL(Node):
     def __init__(self):
         super().__init__("tello_arl")
 
-        self.offset = 0.05
-        self.distance = 0.4
-        self.linear_speed = 20.0
-        self.angular_speed = 20.0
-        self.offset_rotation = 0.05
-        self.frequency = 10
-
+        self.declare_parameters(
+            namespace="",
+            parameters=[
+                ("cmd_vel_topic", None),
+                ("aruco_topic", None),
+                ("flight_data_topic", None),
+                ("log_level", None),
+                ("speed", None),
+                ("distance", None),
+                ("offset_rotation", None),
+                ("frequency", None),
+                ("offset", None),
+            ],
+        )
         self.__init_variables()
-        self.get_logger().info("TelloARL node has been started")
-        # DEBUG, INFO, WARN, ERROR, FATAL debug for development, info for production
-        self._logger.set_level(rclpy.logging.LoggingSeverity.INFO)
-        self._sub_cam = self.create_subscription(
-            Image,
-            "/drone1/image_raw",
-            self.camera_callback,
-            10,
+
+        self.offset = self.get_parameter("offset").get_parameter_value().double_value
+        self.distance = (
+            self.get_parameter("distance").get_parameter_value().double_value
+        )
+        self.linear_speed = (
+            100.0 * self.get_parameter("speed").get_parameter_value().double_value
+        )
+
+        self.angular_speed = (
+            100.0 * self.get_parameter("speed").get_parameter_value().double_value
+        )
+
+        self.offset_rotation = (
+            self.get_parameter("offset_rotation").get_parameter_value().double_value
+        )
+        self.frequency = (
+            self.get_parameter("frequency").get_parameter_value().double_value
+        )
+
+        self._logger.set_level(
+            self.get_parameter("log_level").get_parameter_value().integer_value
         )
         self._sub_flight_data = self.create_subscription(
             FlightData,
-            "/drone1/flight_data",
+            self.get_parameter("flight_data_topic").get_parameter_value().string_value,
             self.flight_data_callback,
             10,
         )
         self._sub_aruco_pose = self.create_subscription(
             PoseArray,
-            "/drone1/aruco_poses",
+            self.get_parameter("aruco_topic").get_parameter_value().string_value,
             self.aruco_pose_callback,
             10,
         )
-        self._pub_cmd_vel = self.create_publisher(Twist, "/cmd_vel", 10)
-        self.create_timer(1 / self.frequency, self.timer_callback)
+        self._pub_cmd_vel = self.create_publisher(
+            Twist,
+            self.get_parameter("cmd_vel_topic").get_parameter_value().string_value,
+            10,
+        )
+        self.create_timer(
+            1.0 / self.get_parameter("frequency").get_parameter_value().double_value,
+            self.timer_callback,
+        )
+        self.get_logger().info("TelloARL node has been started")
 
     def __init_variables(self):
         self._flight_data = FlightData()
@@ -92,7 +119,7 @@ class TelloARL(Node):
             if self.last_direction:
                 self._twist.angular.z = self.last_direction
             else:
-                self._twist.angular.z = 0.005
+                self._twist.angular.z = -0.005
             self.__send_cmd()
 
     def __set_angular_velocity(self):
@@ -170,20 +197,3 @@ class TelloARL(Node):
     def __del__(self):
         self.get_logger().debug("TelloARL node has been stopped")
         self._pub_cmd_vel.publish(Twist())
-
-
-def main(args=None):
-    rclpy.init(args=args)
-    tello_arl = TelloARL()
-
-    try:
-        rclpy.spin(tello_arl)
-    except KeyboardInterrupt:
-        pass
-    finally:
-        tello_arl.destroy_node()
-        rclpy.shutdown()
-
-
-if __name__ == "__main__":
-    main(args=None)

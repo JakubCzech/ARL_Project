@@ -6,6 +6,11 @@
   <description>TODO: Package description</description>
   <maintainer email="czechjakub@icloud.com">root</maintainer>
   <license>TODO: License declaration</license>
+  <depend>gazebo</depend>
+  <depend>gazebo_ros</depend>
+  <depend>std_msgs</depend>
+
+  <exec_depend>gazebo_ros_pkgs</exec_depend>
   <exec_depend>rclpy</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>

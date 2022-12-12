@@ -45,15 +45,18 @@ class ArucoNode(rclpy.node.Node):
     def __init__(self):
         super().__init__("aruco_node")
 
-        # Declare and read parameters
-        # self.declare_parameter("marker_size", 0.0625)
-        self.declare_parameter("marker_size", 0.07)
-        # self.declare_parameter("aruco_dictionary_id", "DICT_6X6_100")
-        self.declare_parameter("aruco_dictionary_id", "DICT_ARUCO_ORIGINAL")
-        self.declare_parameter("image_topic", "/image_raw")
-        self.declare_parameter("camera_info_topic", "/camera_info")
-        self.declare_parameter("camera_frame", None)
-
+        self.declare_parameters(
+            namespace="",
+            parameters=[
+                ("marker_size", None),
+                ("aruco_dictionary_id", None),
+                ("image_topic", None),
+                ("camera_info_topic", None),
+                ("camera_frame", None),
+                ("aruco_poses_topic", None),
+                ("aruco_markers_topic", None),
+            ],
+        )
         self.marker_size = (
             self.get_parameter("marker_size").get_parameter_value().double_value
         )
@@ -63,6 +66,12 @@ class ArucoNode(rclpy.node.Node):
         image_topic = (
             self.get_parameter("image_topic").get_parameter_value().string_value
         )
+        aruco_poses_topic = (
+            self.get_parameter("aruco_poses_topic").get_parameter_value().string_value
+        )
+        aruco_markers_topic = (
+            self.get_parameter("aruco_markers_topic").get_parameter_value().string_value
+        )
         info_topic = (
             self.get_parameter("camera_info_topic").get_parameter_value().string_value
         )
@@ -70,13 +79,8 @@ class ArucoNode(rclpy.node.Node):
             self.get_parameter("camera_frame").get_parameter_value().string_value
         )
 
-        # Make sure we have a valid dictionary id:
         try:
             dictionary_id = cv2.aruco.__getattribute__(dictionary_id_name)
-            # if type(dictionary_id) != type(cv2.aruco.DICT_6X6_100):
-            #     raise AttributeError
-            if type(dictionary_id) != type(cv2.aruco.DICT_ARUCO_ORIGINAL):
-                raise AttributeError
         except AttributeError:
             self.get_logger().error(
                 "bad aruco_dictionary_id: {}".format(dictionary_id_name)
@@ -84,7 +88,6 @@ class ArucoNode(rclpy.node.Node):
             options = "\n".join([s for s in dir(cv2.aruco) if s.startswith("DICT")])
             self.get_logger().error("valid options: {}".format(options))
 
-        # Set up subscriptions
         self.info_sub = self.create_subscription(
             CameraInfo, info_topic, self.info_callback, qos_profile_sensor_data
         )
@@ -94,10 +97,8 @@ class ArucoNode(rclpy.node.Node):
         )
 
         # Set up publishers
-        self.poses_pub = self.create_publisher(PoseArray, "/drone1/aruco_poses", 10)
-        self.markers_pub = self.create_publisher(
-            ArucoMarkers, "/drone1/aruco_markers", 10
-        )
+        self.poses_pub = self.create_publisher(PoseArray, aruco_poses_topic, 10)
+        self.markers_pub = self.create_publisher(ArucoMarkers, aruco_markers_topic, 10)
 
         # Set up fields for camera parameters
         self.info_msg = None
@@ -112,7 +113,6 @@ class ArucoNode(rclpy.node.Node):
         self.info_msg = info_msg
         self.intrinsic_mat = np.reshape(np.array(self.info_msg.k), (3, 3))
         self.distortion = np.array(self.info_msg.d)
-        # Assume that camera parameters will remain the same...
         self.destroy_subscription(self.info_sub)
 
     def image_callback(self, img_msg):
