@@ -27,11 +27,13 @@ def generate_launch_description():
                     {"cmd_vel_topic": "/cmd_vel"},
                     {"flight_data_topic": "/flight_data"},
                     {"log_level": 20},
-                    {"speed": 5.0},  # 100.0 / 5.0
+                    {"speed": 0.1},  # 100.0 / 5.0
                     {"distance": 0.5},
                     {"offset": 0.1},
                     {"offset_rotation": 0.1},
                     {"frequency": 10.0},
+                    {"velocity_send_method": "ros_service"},  # ros_service or ros_topic
+                    {"service_name": "/tello_action"},
                 ],
             ),
             Node(

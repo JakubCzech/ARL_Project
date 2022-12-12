@@ -12,19 +12,11 @@ from launch_ros.actions import Node
 
 from launch import LaunchDescription
 from launch.actions import (
-    DeclareLaunchArgument,
-    EmitEvent,
     ExecuteProcess,
-    TimerAction,
     RegisterEventHandler,
-    TimerAction,
 )
 from launch.event_handlers import (
-    OnExecutionComplete,
-    OnProcessExit,
-    OnProcessIO,
     OnProcessStart,
-    OnShutdown,
 )
 
 
@@ -145,6 +137,8 @@ def generate_launch_description():
             {"offset": 0.05},
             {"offset_rotation": 0.05},
             {"frequency": 10.0},
+            {"velocity_send_method": "ros_topic"},  # ros_service or ros_topic
+            {"service_name": "/drone1/tello_action"},
         ],
     )
     return LaunchDescription(
@@ -159,11 +153,6 @@ def generate_launch_description():
             # Joystick controller, generates /namespace/cmd_vel messages
             tello_driver_1,
             tello_driver_2,
-            RegisterEventHandler(
-                OnProcessStart(
-                    target_action=tello_driver_1, on_start=[drone_1_take_off]
-                )
-            ),
             RegisterEventHandler(
                 OnProcessStart(
                     target_action=tello_driver_2,

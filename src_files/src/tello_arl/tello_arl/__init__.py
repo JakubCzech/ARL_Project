@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
 from rclpy.node import Node
-from tello_msgs.msg import FlightData
+from tello_msgs.msg import FlightData, TelloResponse
+from tello_msgs.srv import TelloAction
 from geometry_msgs.msg import Twist, Pose, PoseArray
 from sensor_msgs.msg import Image
 from scipy.spatial import transform
@@ -23,6 +24,8 @@ class TelloARL(Node):
                 ("offset_rotation", None),
                 ("frequency", None),
                 ("offset", None),
+                ("velocity_send_method", None),
+                ("service_name", None),
             ],
         )
         self.__init_variables()
@@ -61,15 +64,34 @@ class TelloARL(Node):
             self.aruco_pose_callback,
             10,
         )
+        self.sending_method = (
+            self.get_parameter("velocity_send_method")
+            .get_parameter_value()
+            .string_value
+        )
         self._pub_cmd_vel = self.create_publisher(
             Twist,
             self.get_parameter("cmd_vel_topic").get_parameter_value().string_value,
             10,
         )
+        self._call_service = self.create_client(
+            TelloAction,
+            self.get_parameter("service_name").get_parameter_value().string_value,
+        )
+        while not self._call_service.wait_for_service(timeout_sec=2.0):
+            self.get_logger().error("service not available, waiting again...")
+        self._response = self.create_subscription(
+            TelloResponse, "tello_response", self._response_callback, 10
+        )
+
+        # Flag to be turn on when waiting for either take-off / land triggers so that
+        self.waiting_response = False
         self.create_timer(
             1.0 / self.get_parameter("frequency").get_parameter_value().double_value,
             self.timer_callback,
         )
+        self._call_service.call_async(TelloAction.Request(cmd="takeoff"))
+
         self.get_logger().info("TelloARL node has been started")
 
     def __init_variables(self):
@@ -79,6 +101,10 @@ class TelloARL(Node):
         self._aruco_pose = Pose()
         self.__new_cmd = None
         self.last_direction = None
+
+    def _response_callback(self, msg):
+        self.get_logger().info(f"Response: {msg.rc}")
+        pass
 
     def camera_callback(self, msg):
         self.get_logger().debug("Camera callback")
@@ -191,9 +217,18 @@ class TelloARL(Node):
             self.get_logger().debug("Stop")
 
     def __send_cmd(self):
-        self._pub_cmd_vel.publish(self._twist)
+        if self.sending_method == "ros_service":
+            req = TelloAction.Request()
+            req.cmd = f"rc {int(self._twist.linear.x )} {int(self._twist.linear.y )} {int(self._twist.linear.z )} {int(self._twist.angular.z )}"
+            self._call_service.call_async(req)
+            self.get_logger().debug(f"{req.cmd}")
+        elif self.sending_method == "ros_topic":
+            self._pub_cmd_vel.publish(self._twist)
+            self.get_logger().debug(f"{self._twist}")
+
         self.get_logger().debug(f"Distance to aruco: {self._aruco_pose.position.z}")
 
     def __del__(self):
         self.get_logger().debug("TelloARL node has been stopped")
         self._pub_cmd_vel.publish(Twist())
+        self._call_service.call_async(TelloAction.Request(cmd="land"))

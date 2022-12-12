@@ -4,7 +4,6 @@ from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch_ros.actions import Node
 from launch.actions import ExecuteProcess
-from launch.substitutions import FindExecutable
 
 from launch_ros.actions import Node
 
@@ -51,18 +50,6 @@ def generate_launch_description():
         ],
         output="screen",
     )
-    drone_take_off = ExecuteProcess(
-        cmd=[
-            [
-                FindExecutable(name="ros2"),
-                " service call ",
-                "/drone1/tello_action ",
-                "tello_msgs/TelloAction ",
-                '"{cmd: takeoff}"',
-            ]
-        ],
-        shell=True,
-    )
     inject_entity = Node(
         package="tello_gazebo",
         executable="inject_entity.py",
@@ -102,6 +89,8 @@ def generate_launch_description():
             {"offset": 0.05},
             {"offset_rotation": 0.05},
             {"frequency": 10.0},
+            {"velocity_send_method": "ros_topic"},  # ros_service or ros_topic
+            {"service_name": "/drone1/tello_action"},
         ],
     )
 
@@ -114,7 +103,13 @@ def generate_launch_description():
             RegisterEventHandler(
                 OnProcessStart(
                     target_action=tello_driver,
-                    on_start=[drone_take_off, aruco_, controller_, image],
+                    on_start=[aruco_],
+                )
+            ),
+            RegisterEventHandler(
+                OnProcessStart(
+                    target_action=aruco_,
+                    on_start=[controller_, image],
                 )
             ),
         ]
