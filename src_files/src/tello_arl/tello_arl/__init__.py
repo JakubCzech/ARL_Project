@@ -24,8 +24,9 @@ class TelloARL(Node):
                 ("offset_rotation", None),
                 ("frequency", None),
                 ("offset", None),
-                ("velocity_send_method", None),
+                ("velocity_send_method", "ros_service"),
                 ("service_name", None),
+                ("twist_real", 1),
             ],
         )
         self.__init_variables()
@@ -47,6 +48,9 @@ class TelloARL(Node):
         )
         self.frequency = (
             self.get_parameter("frequency").get_parameter_value().double_value
+        )
+        self.twist_real = (
+            self.get_parameter("twist_real").get_parameter_value().integer_value
         )
 
         self._logger.set_level(
@@ -78,6 +82,7 @@ class TelloARL(Node):
             TelloAction,
             self.get_parameter("service_name").get_parameter_value().string_value,
         )
+
         while not self._call_service.wait_for_service(timeout_sec=2.0):
             self.get_logger().error("service not available, waiting again...")
         self._response = self.create_subscription(
@@ -219,9 +224,9 @@ class TelloARL(Node):
     def __send_cmd(self):
         if self.sending_method == "ros_service":
             req = TelloAction.Request()
-            req.cmd = f"rc {int(self._twist.linear.x )} {int(self._twist.linear.y )} {int(self._twist.linear.z )} {int(self._twist.angular.z )}"
+            req.cmd = f"rc {int(self.twist_real*self._twist.linear.y )} {int(self._twist.linear.x )} {int(self._twist.linear.z )} {self.twist_real*int(self._twist.angular.z )}"
             self._call_service.call_async(req)
-            self.get_logger().debug(f"{req.cmd}")
+            self.get_logger().info(f"{req.cmd}")
         elif self.sending_method == "ros_topic":
             self._pub_cmd_vel.publish(self._twist)
             self.get_logger().debug(f"{self._twist}")

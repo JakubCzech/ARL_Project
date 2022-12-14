@@ -1,17 +1,36 @@
+import os
 from launch import LaunchDescription
+from launch.actions import IncludeLaunchDescription
+
 from launch_ros.actions import Node
+from launch_ros.substitutions import FindPackageShare
+from launch.substitutions import PathJoinSubstitution, TextSubstitution
+from launch.launch_description_sources import PythonLaunchDescriptionSource
 
 
 def generate_launch_description():
     return LaunchDescription(
         [
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(
+                    [
+                        PathJoinSubstitution(
+                            [
+                                FindPackageShare("tello_driver"),
+                                "launch",
+                                "teleop_launch.py",
+                            ]
+                        )
+                    ]
+                ),
+            ),
             Node(
                 package="ros2_aruco",
                 executable="aruco_node",
                 name="aruco_node",
                 parameters=[
                     {"marker_size": 0.0625},
-                    {"aruco_dictionary_id": "DICT_6X6_100"},
+                    {"aruco_dictionary_id": "DICT_ARUCO_ORIGINAL"},
                     {"image_topic": "/image_raw"},
                     {"camera_info_topic": "/camera_info"},
                     {"aruco_poses_topic": "/aruco_poses"},
@@ -34,6 +53,7 @@ def generate_launch_description():
                     {"frequency": 10.0},
                     {"velocity_send_method": "ros_service"},  # ros_service or ros_topic
                     {"service_name": "/tello_action"},
+                    {"twist_real": -1},
                 ],
             ),
             Node(
