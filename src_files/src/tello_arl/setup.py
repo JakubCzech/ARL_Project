@@ -15,6 +15,10 @@ setup(
             os.path.join("share", package_name, "launch"),
             glob("launch/*launch.[pxy][yma]*"),
         ),
+        (
+            os.path.join("share", package_name, "visualization"),
+            glob("visualization/*"),
+        ),
     ],
     install_requires=["setuptools"],
     zip_safe=True,

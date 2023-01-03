@@ -11,25 +11,25 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 def generate_launch_description():
     return LaunchDescription(
         [
-            IncludeLaunchDescription(
-                PythonLaunchDescriptionSource(
-                    [
-                        PathJoinSubstitution(
-                            [
-                                FindPackageShare("tello_driver"),
-                                "launch",
-                                "teleop_launch.py",
-                            ]
-                        )
-                    ]
-                ),
-            ),
+            # IncludeLaunchDescription(
+            #     PythonLaunchDescriptionSource(
+            #         [
+            #             PathJoinSubstitution(
+            #                 [
+            #                     FindPackageShare("tello_driver"),
+            #                     "launch",
+            #                     "teleop_launch.py",
+            #                 ]
+            #             )
+            #         ]
+            #     ),
+            # ),
             Node(
                 package="ros2_aruco",
                 executable="aruco_node",
                 name="aruco_node",
                 parameters=[
-                    {"marker_size": 0.0625},
+                    {"marker_size": 0.07},
                     {"aruco_dictionary_id": "DICT_ARUCO_ORIGINAL"},
                     {"image_topic": "/image_raw"},
                     {"camera_info_topic": "/camera_info"},
@@ -46,10 +46,13 @@ def generate_launch_description():
                     {"cmd_vel_topic": "/cmd_vel"},
                     {"flight_data_topic": "/flight_data"},
                     {"log_level": 20},
-                    {"speed": 0.1},  # 100.0 / 5.0
-                    {"distance": 0.5},
+                    {"speed_linear": 0.5},  # 100.0 / 5.0
+                    {"speed_angular": 0.75},  # 100.0 / 5.0
+                    {"distance": 10.0},
                     {"offset": 0.1},
                     {"offset_rotation": 0.1},
+                    {"limit_linear": 0.5},
+                    {"limit_angular": 1.0},
                     {"frequency": 10.0},
                     {"velocity_send_method": "ros_service"},  # ros_service or ros_topic
                     {"service_name": "/tello_action"},
