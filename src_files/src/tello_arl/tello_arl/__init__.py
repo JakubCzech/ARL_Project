@@ -27,7 +27,6 @@ class TelloARL(Node):
                 ("frequency", 1.0),
                 ("velocity_send_method", "ros_service"),
                 ("service_name", "/tello_action"),
-                ("twist_real", 0),
                 ("limit_linear", 25.0),
                 ("limit_angular", 50.0),
             ],
@@ -56,10 +55,6 @@ class TelloARL(Node):
         self.offset = self.get_parameter("offset").get_parameter_value().double_value
         self.offset_rotation = (
             self.get_parameter("offset_rotation").get_parameter_value().double_value
-        )
-
-        self.twist_real = (
-            self.get_parameter("twist_real").get_parameter_value().integer_value
         )
 
         self._logger.set_level(
@@ -192,10 +187,10 @@ class TelloARL(Node):
             self.get_logger().debug(f"Pitch: {self.pitch}")
         elif self.pitch > self.offset_rotation:
             self.get_logger().debug(f"Rotate right {self.pitch}")
-            self._twist.angular.z = -self.angular_speed * self.pitch**2
+            self._twist.angular.z = self.angular_speed * self.pitch**2
         elif self.pitch < -self.offset_rotation:
             self.get_logger().debug(f"Rotate left {self.pitch}")
-            self._twist.angular.z = +self.angular_speed * self.pitch**2
+            self._twist.angular.z = -self.angular_speed * self.pitch**2
 
     def __set_x_velocity(self):
         __dist = self._aruco_pose.position.z
@@ -239,18 +234,16 @@ class TelloARL(Node):
             self._twist.linear.z = self.linear_speed
 
     def __send_cmd(self):
-        # _mul = 10
 
         self.get_logger().info(
             f"Aruco pose. Y_VEL:{self._aruco_pose.position.x}, Z_VEL:{self._aruco_pose.position.y}, Distance:{self._aruco_pose.position.z}, Rotatation{self.pitch}"
         )
 
         self.get_logger().info(
-            f"Drone speed. Y_VEL:{self.twist_real*self._twist.linear.y*10 } X_VEL:{self._twist.linear.x*15 } Z_VEL:{self._twist.linear.z*15 } ROT_VEL:{self.twist_real*self._twist.angular.z }"
+            f"Drone speed. Y_VEL:{self._twist.linear.y*10 } X_VEL:{self._twist.linear.x*15 } Z_VEL:{self._twist.linear.z*15 } ROT_VEL:{self._twist.angular.z }"
         )
         if self.sending_method == "ros_service":
             req = TelloAction.Request()
-            # req.cmd = f"rc {int(self.twist_real*self._twist.linear.y*_mul )} {int(self._twist.linear.x*_mul )} {int(self._twist.linear.z*_mul )} {int(self.twist_real*self._twist.angular.z*_mul )}"
             req.cmd = f"rc {int(self._twist.linear.y*10 )} {int(self._twist.linear.x*15 )} {int(self._twist.linear.z*15 )} {int(-1*self._twist.angular.z*30 )}"
             self._call_service.call_async(req)
             self.get_logger().info(f"{req.cmd}")
