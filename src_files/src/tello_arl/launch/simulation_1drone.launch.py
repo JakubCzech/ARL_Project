@@ -85,7 +85,7 @@ def generate_launch_description():
             {"flight_data_topic": "/drone1/flight_data"},
             {"log_level": 20},
             {"speed_linear": 0.5},
-            {"speed_angular": 1.0},
+            {"speed_angular": 0.75},
             {"distance": 1.0},
             {"offset": 0.1},
             {"offset_rotation": 0.05},

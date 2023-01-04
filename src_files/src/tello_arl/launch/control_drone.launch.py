@@ -46,24 +46,24 @@ def generate_launch_description():
                     {"cmd_vel_topic": "/cmd_vel"},
                     {"flight_data_topic": "/flight_data"},
                     {"log_level": 20},
-                    {"speed_linear": 0.5},  # 100.0 / 5.0
-                    {"speed_angular": 0.75},  # 100.0 / 5.0
-                    {"distance": 10.0},
+                    {"speed_linear": 1.0},  # 100.0 / 5.0
+                    {"speed_angular": 10.0},  # 100.0 / 5.0
+                    {"distance": 1.0},
                     {"offset": 0.1},
-                    {"offset_rotation": 0.1},
-                    {"limit_linear": 0.5},
-                    {"limit_angular": 1.0},
+                    {"offset_rotation": 0.15},
+                    {"limit_linear": 1.0},
+                    {"limit_angular": 30.0},
                     {"frequency": 10.0},
                     {"velocity_send_method": "ros_service"},  # ros_service or ros_topic
                     {"service_name": "/tello_action"},
                     {"twist_real": -1},
                 ],
             ),
-            Node(
-                package="rqt_image_view",
-                executable="rqt_image_view",
-                output="screen",
-                arguments=["/image_raw"],
-            ),
+            # Node(
+            #     package="rqt_image_view",
+            #     executable="rqt_image_view",
+            #     output="screen",
+            #     arguments=["/image_raw"],
+            # ),
         ]
     )

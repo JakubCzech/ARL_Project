@@ -119,6 +119,7 @@ class TelloARL(Node):
         self._aruco_pose = Pose()
         self.__new_cmd = None
         self.last_direction = None
+        self.pitch = None
 
     ########################### Callbacks #######################################
 
@@ -144,9 +145,7 @@ class TelloARL(Node):
                 self._aruco_pose.orientation.w,
             ]
         ).as_euler("xyz")
-        self.get_logger().info(
-            f"New aruco pose: {self._aruco_pose.position.x}, {self._aruco_pose.position.y}, {self._aruco_pose.position.z}, {self.pitch}"
-        )
+
         self.__set_x_velocity()
         self.__set_y_velocity()
         self.__set_z_velocity()
@@ -158,6 +157,7 @@ class TelloARL(Node):
         self.get_logger().debug(
             f"Timer callback. Battery: {self._flight_data.bat}, Height: {self._flight_data.h}"
         )
+
         if self.__new_cmd:
             self.__send_cmd()
             self.__new_cmd = False
@@ -191,12 +191,10 @@ class TelloARL(Node):
             self._twist.angular.z = 0.0
             self.get_logger().debug(f"Pitch: {self.pitch}")
         elif self.pitch > self.offset_rotation:
-            self.get_logger().debug(f"Turn left distance {self._aruco_pose.position.z}")
+            self.get_logger().debug(f"Rotate right {self.pitch}")
             self._twist.angular.z = -self.angular_speed * self.pitch**2
         elif self.pitch < -self.offset_rotation:
-            self.get_logger().debug(
-                f"Turn right distance {self._aruco_pose.position.z}"
-            )
+            self.get_logger().debug(f"Rotate left {self.pitch}")
             self._twist.angular.z = +self.angular_speed * self.pitch**2
 
     def __set_x_velocity(self):
@@ -204,15 +202,15 @@ class TelloARL(Node):
 
         if (self.distance - self.offset) < __dist < (self.distance + self.offset):
             self._twist.linear.x = 0.0
-            self.get_logger().info(f"X distance: {__dist}")
+            self.get_logger().debug(f"X distance: {__dist}")
         elif __dist > (self.distance + self.offset):
-            self.get_logger().info(f"X distance: {__dist}, Move forward")
+            self.get_logger().debug(f"X distance: {__dist}, Move forward")
             __dist -= self.distance
-            self._twist.linear.x = self.linear_speed * __dist**2
+            self._twist.linear.x = self.linear_speed
         elif __dist < (self.distance - self.offset):
-            self.get_logger().info(f"X distance: {__dist}, Move backward")
+            self.get_logger().debug(f"X distance: {__dist}, Move backward")
             __dist += self.distance
-            self._twist.linear.x = -self.linear_speed * __dist**2
+            self._twist.linear.x = -self.linear_speed
 
     def __set_y_velocity(self):
         __dist = self._aruco_pose.position.x
@@ -220,11 +218,11 @@ class TelloARL(Node):
         if -self.offset < __dist < self.offset:
             self._twist.linear.y = 0.0
             self.get_logger().debug(f"Y distance: {__dist}")
-        elif __dist > self.offset:
-            self._twist.linear.y = -self.linear_speed * __dist**2
+        elif __dist < self.offset:
+            self._twist.linear.y = -self.linear_speed
             self.get_logger().debug(f"Y distance: {__dist}, Move right")
-        elif __dist < -self.offset:
-            self._twist.linear.y = self.linear_speed * __dist**2
+        elif __dist > -self.offset:
+            self._twist.linear.y = self.linear_speed
             self.get_logger().debug(f"Y distance: {__dist}, Move left")
 
     def __set_z_velocity(self):
@@ -235,16 +233,25 @@ class TelloARL(Node):
             self.get_logger().debug(f"Z distance: {__dist}")
         elif __dist > self.offset / 2:
             self.get_logger().debug(f"Z distance: {__dist}, Move down")
-            self._twist.linear.z = -self.linear_speed * __dist**2
+            self._twist.linear.z = -self.linear_speed
         elif __dist < -self.offset / 2:
             self.get_logger().debug(f"Z distance: {__dist}, Move up")
-            self._twist.linear.z = self.linear_speed * __dist**2
+            self._twist.linear.z = self.linear_speed
 
     def __send_cmd(self):
+        # _mul = 10
+
+        self.get_logger().info(
+            f"Aruco pose. Y_VEL:{self._aruco_pose.position.x}, Z_VEL:{self._aruco_pose.position.y}, Distance:{self._aruco_pose.position.z}, Rotatation{self.pitch}"
+        )
+
+        self.get_logger().info(
+            f"Drone speed. Y_VEL:{self.twist_real*self._twist.linear.y*10 } X_VEL:{self._twist.linear.x*15 } Z_VEL:{self._twist.linear.z*15 } ROT_VEL:{self.twist_real*self._twist.angular.z }"
+        )
         if self.sending_method == "ros_service":
             req = TelloAction.Request()
-            _mul = 1
-            req.cmd = f"rc {int(self.twist_real*self._twist.linear.y*_mul )} {int(self._twist.linear.x*_mul )} {int(self._twist.linear.z*_mul )} {int(self.twist_real*self._twist.angular.z*_mul )}"
+            # req.cmd = f"rc {int(self.twist_real*self._twist.linear.y*_mul )} {int(self._twist.linear.x*_mul )} {int(self._twist.linear.z*_mul )} {int(self.twist_real*self._twist.angular.z*_mul )}"
+            req.cmd = f"rc {int(self._twist.linear.y*10 )} {int(self._twist.linear.x*15 )} {int(self._twist.linear.z*15 )} {int(-1*self._twist.angular.z*30 )}"
             self._call_service.call_async(req)
             self.get_logger().info(f"{req.cmd}")
         elif self.sending_method == "ros_topic":
@@ -261,23 +268,3 @@ class TelloARL(Node):
         self._call_service.call_async(req)
         self._call_service.call_async(TelloAction.Request(cmd="land"))
         self.get_logger().info("TelloARL node has been stopped")
-
-
-import rclpy
-
-
-def main(args=None):
-    rclpy.init(args=args)
-    tello_arl = TelloARL()
-
-    try:
-        rclpy.spin(tello_arl)
-    except KeyboardInterrupt:
-        pass
-    finally:
-        tello_arl.destroy_node()
-        rclpy.shutdown()
-
-
-if __name__ == "__main__":
-    main(args=None)
