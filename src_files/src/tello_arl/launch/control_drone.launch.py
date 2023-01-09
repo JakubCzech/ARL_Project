@@ -1,29 +1,17 @@
-import os
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription
-
 from launch_ros.actions import Node
-from launch_ros.substitutions import FindPackageShare
-from launch.substitutions import PathJoinSubstitution, TextSubstitution
-from launch.launch_description_sources import PythonLaunchDescriptionSource
 
 
 def generate_launch_description():
+    image_topic = "/image_raw"
+    camera_info_topic = "/camera_info"
+    aruco_poses_topic = "/aruco_poses"
+    aruco_markers_topic = "/aruco_markers"
+    cmd_vel_topic = "/cmd_vel"
+    flight_data_topic = "/flight_data"
+
     return LaunchDescription(
         [
-            # IncludeLaunchDescription(
-            #     PythonLaunchDescriptionSource(
-            #         [
-            #             PathJoinSubstitution(
-            #                 [
-            #                     FindPackageShare("tello_driver"),
-            #                     "launch",
-            #                     "teleop_launch.py",
-            #                 ]
-            #             )
-            #         ]
-            #     ),
-            # ),
             Node(
                 package="ros2_aruco",
                 executable="aruco_node",
@@ -31,10 +19,10 @@ def generate_launch_description():
                 parameters=[
                     {"marker_size": 0.07},
                     {"aruco_dictionary_id": "DICT_ARUCO_ORIGINAL"},
-                    {"image_topic": "/image_raw"},
-                    {"camera_info_topic": "/camera_info"},
-                    {"aruco_poses_topic": "/aruco_poses"},
-                    {"aruco_markers_topic": "/aruco_markers"},
+                    {"image_topic": image_topic},
+                    {"camera_info_topic": camera_info_topic},
+                    {"aruco_poses_topic": aruco_poses_topic},
+                    {"aruco_markers_topic": aruco_markers_topic},
                 ],
             ),
             Node(
@@ -42,11 +30,11 @@ def generate_launch_description():
                 executable="controller",
                 name="controller",
                 parameters=[
-                    {"aruco_topic": "/aruco_poses"},
-                    {"cmd_vel_topic": "/cmd_vel"},
-                    {"flight_data_topic": "/flight_data"},
+                    {"aruco_topic": aruco_poses_topic},
+                    {"cmd_vel_topic": cmd_vel_topic},
+                    {"flight_data_topic": flight_data_topic},
                     {"log_level": 20},
-                    {"speed_linear": 1.0},  # 100.0 / 5.0
+                    {"speed_linear": 1.0},  # 100.0 / 5.0pos
                     {"speed_angular": 10.0},  # 100.0 / 5.0
                     {"distance": 1.0},
                     {"offset": 0.1},
@@ -59,11 +47,18 @@ def generate_launch_description():
                     {"twist_real": -1},
                 ],
             ),
-            # Node(
-            #     package="rqt_image_view",
-            #     executable="rqt_image_view",
-            #     output="screen",
-            #     arguments=["/image_raw"],
-            # ),
+            Node(
+                package="tello_arl",
+                executable="visualization",
+                name="visualization",
+                parameters=[
+                    {"aruco_topic": aruco_poses_topic},
+                    {"flight_data_topic": flight_data_topic},
+                    {"cmd_vel_topic": cmd_vel_topic},
+                    {"camera_topic": image_topic},
+                    {"offset": 0.1},
+                    {"offset_rotation": 0.05},
+                ],
+            ),
         ]
     )
