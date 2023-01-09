@@ -25,6 +25,12 @@ def generate_launch_description():
     urdf_path = os.path.join(
         get_package_share_directory("tello_description"), "urdf", "tello_1.urdf"
     )
+    image_topic = "/drone1/image_raw"
+    camera_info_topic = "/drone1/camera_info"
+    aruco_poses_topic = "/aruco_poses"
+    aruco_markers_topic = "/aruco_markers"
+    cmd_vel_topic = "/drone1/cmd_vel"
+    flight_data_topic = "/drone1/flight_data"
 
     drone_state = Node(
         package="robot_state_publisher",
@@ -36,7 +42,7 @@ def generate_launch_description():
         package="rqt_image_view",
         executable="rqt_image_view",
         output="screen",
-        arguments=["/drone1/image_raw"],
+        arguments=["visualization"],
     )
     start_gazebo = ExecuteProcess(
         cmd=[
@@ -69,10 +75,10 @@ def generate_launch_description():
         parameters=[
             {"marker_size": 0.0625},
             {"aruco_dictionary_id": "DICT_6X6_100"},
-            {"image_topic": "/drone1/image_raw"},
-            {"camera_info_topic": "/drone1/camera_info"},
-            {"aruco_poses_topic": "/aruco_poses"},
-            {"aruco_markers_topic": "/aruco_markers"},
+            {"image_topic": image_topic},
+            {"camera_info_topic": camera_info_topic},
+            {"aruco_poses_topic": aruco_poses_topic},
+            {"aruco_markers_topic": aruco_markers_topic},
         ],
     )
     controller_ = Node(
@@ -80,20 +86,33 @@ def generate_launch_description():
         executable="controller",
         name="controller",
         parameters=[
-            {"aruco_topic": "/aruco_poses"},
-            {"cmd_vel_topic": "/drone1/cmd_vel"},
-            {"flight_data_topic": "/drone1/flight_data"},
+            {"aruco_topic": aruco_poses_topic},
+            {"cmd_vel_topic": cmd_vel_topic},
+            {"flight_data_topic": flight_data_topic},
             {"log_level": 20},
             {"speed_linear": 0.5},
             {"speed_angular": 0.75},
-            {"distance": 1.0},
-            {"offset": 0.1},
+            {"distance": 0.75},
+            {"offset": 0.2},
             {"offset_rotation": 0.05},
             {"frequency": 10.0},
             {"limit_linear": 0.5},
             {"limit_angular": 1.0},
             {"velocity_send_method": "ros_topic"},  # ros_service or ros_topic
             {"service_name": "/drone1/tello_action"},
+            {"simulation": True},
+        ],
+    )
+    visualization_ = Node(
+        package="tello_arl",
+        executable="visualization",
+        name="visualization",
+        parameters=[
+            {"aruco_topic": aruco_poses_topic},
+            {"flight_data_topic": flight_data_topic},
+            {"cmd_vel_topic": cmd_vel_topic},
+            {"offset": 0.1},
+            {"offset_rotation": 0.05},
         ],
     )
 
@@ -112,7 +131,7 @@ def generate_launch_description():
             RegisterEventHandler(
                 OnProcessStart(
                     target_action=aruco_,
-                    on_start=[controller_, image],
+                    on_start=[controller_, image, visualization_],
                 )
             ),
         ]

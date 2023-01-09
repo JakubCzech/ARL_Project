@@ -30,6 +30,7 @@ setup(
     entry_points={
         "console_scripts": [
             "controller = tello_arl.main:main",
+            "visualization = tello_arl.visualization:main",
         ],
     },
 )

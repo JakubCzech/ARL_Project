@@ -6,6 +6,7 @@ from tello_msgs.srv import TelloAction
 from geometry_msgs.msg import Twist, Pose, PoseArray
 from sensor_msgs.msg import Image
 from scipy.spatial import transform
+import os
 
 
 class TelloARL(Node):
@@ -29,9 +30,11 @@ class TelloARL(Node):
                 ("service_name", "/tello_action"),
                 ("limit_linear", 25.0),
                 ("limit_angular", 50.0),
+                ("simulation", False),
             ],
         )
         self.__init_variables()
+        self.sim = self.get_parameter("simulation").get_parameter_value().bool_value
 
         self.speed_limit_linear = (
             self.get_parameter("limit_linear").get_parameter_value().double_value
@@ -121,10 +124,6 @@ class TelloARL(Node):
     def response_callback(self, msg: TelloResponse):
         self.get_logger().info(f"Response: {msg.rc}")
 
-    def camera_callback(self, msg: Image):
-        self.get_logger().debug("Camera callback")
-        self._image = msg
-
     def flight_data_callback(self, msg: FlightData):
         self.get_logger().debug("Flight data callback")
         self._flight_data = msg
@@ -157,7 +156,7 @@ class TelloARL(Node):
             self.__send_cmd()
             self.__new_cmd = False
         else:
-            self.get_logger().warn("No new command")
+            self.get_logger().debug("No new command")
             self._twist = Twist()
             self.__send_cmd()
 
@@ -235,19 +234,24 @@ class TelloARL(Node):
 
     def __send_cmd(self):
 
-        self.get_logger().info(
+        self.get_logger().debug(
             f"Aruco pose. Y_VEL:{self._aruco_pose.position.x}, Z_VEL:{self._aruco_pose.position.y}, Distance:{self._aruco_pose.position.z}, Rotatation{self.pitch}"
         )
 
-        self.get_logger().info(
+        self.get_logger().debug(
             f"Drone speed. Y_VEL:{self._twist.linear.y*10 } X_VEL:{self._twist.linear.x*15 } Z_VEL:{self._twist.linear.z*15 } ROT_VEL:{self._twist.angular.z }"
         )
+
         if self.sending_method == "ros_service":
             req = TelloAction.Request()
             req.cmd = f"rc {int(self._twist.linear.y*10 )} {int(self._twist.linear.x*15 )} {int(self._twist.linear.z*15 )} {int(-1*self._twist.angular.z*30 )}"
             self._call_service.call_async(req)
-            self.get_logger().info(f"{req.cmd}")
+            self.get_logger().debug(f"{req.cmd}")
         elif self.sending_method == "ros_topic":
+            if self.sim:
+                self._twist.linear.y *= -1
+                self._twist.angular.z *= -1
+
             self._pub_cmd_vel.publish(self._twist)
             self.get_logger().debug(f"{self._twist}")
 
