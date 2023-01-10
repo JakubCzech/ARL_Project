@@ -80,6 +80,16 @@ ros2 launch tello_driver teleop_launch.py
 colcon build && ros2 launch tello_arl control_drone.launch.py
 ```
 
-
-
-
+## Inne polecenia
+Lądowanie:
+```bash
+ros2 service call /drone1/tello_action tello_msgs/TelloAction "{cmd: 'land'}"
+```
+Startowania:
+```bash
+ros2 service call /drone1/tello_action tello_msgs/TelloAction "{cmd: 'takeoff'}" 
+```
+Reset symulacji
+```bash
+ros2 service call /reset_simulation std_srvs/srv/Empty
+```
