@@ -6,8 +6,7 @@ from tello_msgs.srv import TelloAction
 from geometry_msgs.msg import Twist, Pose, PoseArray
 from sensor_msgs.msg import Image
 from scipy.spatial import transform
-
-# from simple_pid import PID ### TODO: implement PID controller
+import os
 
 
 class TelloARL(Node):
@@ -21,15 +20,13 @@ class TelloARL(Node):
                 ("aruco_topic", "/aruco_poses"),
                 ("flight_data_topic", "/flight_data"),
                 ("log_level", 10),
-                ("speed_horizontal", 15.0),
-                ("speed_vertical", 10.0),
-                ("speed_frontal", 15.0),
-                ("speed_angular", 30.0),
+                ("speed_linear", 0.3),
+                ("speed_angular", 0.3),
                 ("distance", 10.0),
                 ("offset_x", 0.2),
                 ("offset_y", 0.2),
                 ("offset_z", 0.2),
-                ("offset_rotation", 0.2),
+                ("offset_rotation", 0.1),
                 ("frequency", 1.0),
                 ("velocity_send_method", "ros_service"),
                 ("service_name", "/tello_action"),
@@ -52,29 +49,15 @@ class TelloARL(Node):
             self.get_parameter("distance").get_parameter_value().double_value
         )
 
-        self.speed_horizontal = (
-            self.get_parameter("speed_horizontal").get_parameter_value().double_value
-        )
-        self.speed_vertical = (
-            self.get_parameter("speed_vertical").get_parameter_value().double_value
-        )
-        self.speed_frontal = (
-            self.get_parameter("speed_frontal").get_parameter_value().double_value
+        self.linear_speed = (
+            self.get_parameter("speed_linear").get_parameter_value().double_value
         )
 
         self.angular_speed = (
             self.get_parameter("speed_angular").get_parameter_value().double_value
         )
 
-        self.offset_x = (
-            self.get_parameter("offset_x").get_parameter_value().double_value
-        )
-        self.offset_y = (
-            self.get_parameter("offset_y").get_parameter_value().double_value
-        )
-        self.offset_z = (
-            self.get_parameter("offset_z").get_parameter_value().double_value
-        )
+        self.offset = self.get_parameter("offset").get_parameter_value().double_value
         self.offset_rotation = (
             self.get_parameter("offset_rotation").get_parameter_value().double_value
         )
@@ -138,17 +121,6 @@ class TelloARL(Node):
         self.last_direction = None
         self.pitch = None
 
-    def __del__(self):
-        self.get_logger().info(
-            f"Battery: {self._flight_data.bat}, Height: {self._flight_data.h}"
-        )
-        self._pub_cmd_vel.publish(Twist())
-        req = TelloAction.Request()
-        req.cmd = f"rc 0 0 0 0"
-        self._call_service.call_async(req)
-        self._call_service.call_async(TelloAction.Request(cmd="land"))
-        self.get_logger().info("TelloARL node has been stopped")
-
     ########################### Callbacks #######################################
 
     def response_callback(self, msg: TelloResponse):
@@ -170,27 +142,10 @@ class TelloARL(Node):
             ]
         ).as_euler("xyz")
 
-        # Z velocity vertical
-        self._twist.linear.z = self.__set_direction(
-            self.offset_y, self.speed_horizontal, self._aruco_pose.position.y, 0.0
-        )
-        self._twist.linear.z *= -1
-        # Y velocity horizontal
-        self._twist.linear.y = self.__set_direction(
-            self.offset_x, self.speed_vertical, self._aruco_pose.position.x, 0.0
-        )
-        # Angular velocity
-        self._twist.angular.z = self.__set_direction(
-            self.offset_rotation, self.angular_speed / 10, self.pitch, 0.0
-        )
-        self._twist.angular.z *= -1
-        # X velocity forward/backward
-        self._twist.linear.x = self.__set_direction(
-            self.offset_z,
-            self.speed_frontal,
-            self._aruco_pose.position.z,
-            self.distance,
-        )
+        self.__set_x_velocity()
+        self.__set_y_velocity()
+        self.__set_z_velocity()
+        self.__set_angular_velocity()
         self.__set_limit_speed()
         self.__new_cmd = True
 
@@ -207,78 +162,109 @@ class TelloARL(Node):
             self._twist = Twist()
             self.__send_cmd()
 
-    ########################### Velocity #######################################
-
-    def __set_direction(
-        self, __offset: float, __speed: float, __dist: float, __distance: float = 0.0
-    ):
-        if -__offset + __distance < __dist < __offset + __distance:
-            return 0.0
-        if __dist >= __distance + __offset:
-            return self.__set_velocity(__offset, __speed, __dist, __distance)
-        if __dist <= __distance - __offset:
-            return -self.__set_velocity(__offset, __speed, __dist, __distance)
-
-        return 0.0
-
-    def __set_velocity(
-        self, __offset: float, __speed: float, __dist: float, __distance: float = 0.0
-    ):
-        if abs(__dist) > 3 * (__offset + __distance):
-            return __speed * 3
-
-        if abs(__dist) > 2 * __offset + __distance:
-            return __speed * abs(__dist) / (__offset + __distance)
-        else:
-            return __speed * abs(__dist) / (__offset + __distance) / 2
-
+    ########################### SPEED SETTING #######################################
     def __set_limit_speed(self):
+        if self._twist.linear.x > self.speed_limit_linear:
+            self._twist.linear.x = self.speed_limit_linear
+        if self._twist.linear.y > self.speed_limit_linear:
+            self._twist.linear.y = self.speed_limit_linear
+        if self._twist.linear.z > self.speed_limit_linear:
+            self._twist.linear.z = self.speed_limit_linear
+        if self._twist.angular.z > self.speed_limit_angular:
+            self._twist.angular.z = self.speed_limit_angular
 
-        if abs(self._twist.linear.x) > self.speed_limit_linear:
-            self._twist.linear.x = (
-                self.speed_limit_linear
-                * abs(self._twist.linear.x)
-                / self._twist.linear.x
-            )
+        if self._twist.linear.x < -self.speed_limit_linear:
+            self._twist.linear.x = -self.speed_limit_linear
+        if self._twist.linear.y < -self.speed_limit_linear:
+            self._twist.linear.y = -self.speed_limit_linear
+        if self._twist.linear.z < -self.speed_limit_linear:
+            self._twist.linear.z = -self.speed_limit_linear
+        if self._twist.angular.z < -self.speed_limit_angular:
+            self._twist.angular.z = -self.speed_limit_angular
 
-        if abs(self._twist.linear.y) > self.speed_limit_linear:
-            self._twist.linear.y = (
-                self.speed_limit_linear
-                * abs(self._twist.linear.y)
-                / self._twist.linear.y
-            )
-        if abs(self._twist.linear.z) > self.speed_limit_linear:
-            self._twist.linear.z = (
-                self.speed_limit_linear
-                * abs(self._twist.linear.z)
-                / self._twist.linear.z
-            )
+    def __set_angular_velocity(self):
+        if -self.offset_rotation < self.pitch < self.offset_rotation:
+            self._twist.angular.z = 0.0
+            self.get_logger().debug(f"Pitch: {self.pitch}")
+        elif self.pitch > self.offset_rotation:
+            self.get_logger().debug(f"Rotate right {self.pitch}")
+            self._twist.angular.z = self.angular_speed * self.pitch**2
+        elif self.pitch < -self.offset_rotation:
+            self.get_logger().debug(f"Rotate left {self.pitch}")
+            self._twist.angular.z = -self.angular_speed * self.pitch**2
 
-        if abs(self._twist.angular.z) > self.speed_limit_angular:
-            self._twist.angular.z = (
-                self.speed_limit_angular
-                * abs(self._twist.angular.z)
-                / self._twist.angular.z
-            )
+    def __set_x_velocity(self):
+        __dist = self._aruco_pose.position.z
+
+        if (self.distance - self.offset) < __dist < (self.distance + self.offset):
+            self._twist.linear.x = 0.0
+            self.get_logger().debug(f"X distance: {__dist}")
+        elif __dist > (self.distance + self.offset):
+            self.get_logger().debug(f"X distance: {__dist}, Move forward")
+            __dist -= self.distance
+            self._twist.linear.x = self.linear_speed
+        elif __dist < (self.distance - self.offset):
+            self.get_logger().debug(f"X distance: {__dist}, Move backward")
+            __dist += self.distance
+            self._twist.linear.x = -self.linear_speed
+
+    def __set_y_velocity(self):
+        __dist = self._aruco_pose.position.x
+
+        if -self.offset < __dist < self.offset:
+            self._twist.linear.y = 0.0
+            self.get_logger().debug(f"Y distance: {__dist}")
+            return
+        elif __dist < self.offset:
+            self._twist.linear.y = -self.linear_speed
+            self.get_logger().debug(f"Y distance: {__dist}, Move right")
+        elif __dist > -self.offset:
+            self._twist.linear.y = self.linear_speed
+            self.get_logger().debug(f"Y distance: {__dist}, Move left")
+
+    def __set_z_velocity(self):
+        __dist = self._aruco_pose.position.y
+
+        if -self.offset / 2 < __dist < self.offset / 2:
+            self._twist.linear.z = 0.0
+            self.get_logger().debug(f"Z distance: {__dist}")
+        elif __dist > self.offset / 2:
+            self.get_logger().debug(f"Z distance: {__dist}, Move down")
+            self._twist.linear.z = -self.linear_speed
+        elif __dist < -self.offset / 2:
+            self.get_logger().debug(f"Z distance: {__dist}, Move up")
+            self._twist.linear.z = self.linear_speed
 
     def __send_cmd(self):
 
         self.get_logger().debug(
             f"Aruco pose. Y_VEL:{self._aruco_pose.position.x}, Z_VEL:{self._aruco_pose.position.y}, Distance:{self._aruco_pose.position.z}, Rotatation{self.pitch}"
         )
+
         self.get_logger().debug(
-            f"Drone speed. Y_VEL:{self._twist.linear.y} X_VEL:{self._twist.linear.x} Z_VEL:{self._twist.linear.z} ROT_VEL:{self._twist.angular.z}"
+            f"Drone speed. Y_VEL:{self._twist.linear.y*10 } X_VEL:{self._twist.linear.x*15 } Z_VEL:{self._twist.linear.z*15 } ROT_VEL:{self._twist.angular.z }"
         )
 
         if self.sending_method == "ros_service":
             req = TelloAction.Request()
-            req.cmd = f"rc {int(self._twist.linear.y)} {int(self._twist.linear.x)} {int(self._twist.linear.z)} {int(self._twist.angular.z)}"
-            self._pub_cmd_vel.publish(self._twist)
-
+            req.cmd = f"rc {int(self._twist.linear.y*10 )} {int(self._twist.linear.x*15 )} {int(self._twist.linear.z*15 )} {int(-1*self._twist.angular.z*30 )}"
             self._call_service.call_async(req)
             self.get_logger().debug(f"{req.cmd}")
-        if self.sim:
-            self._twist.linear.y *= -1
+        elif self.sending_method == "ros_topic":
+            if self.sim:
+                self._twist.linear.y *= -1
+                self._twist.angular.z *= -5
 
-        self._pub_cmd_vel.publish(self._twist)
-        self.get_logger().debug(f"{self._twist}")
+            self._pub_cmd_vel.publish(self._twist)
+            self.get_logger().debug(f"{self._twist}")
+
+    def __del__(self):
+        self.get_logger().info(
+            f"Battery: {self._flight_data.bat}, Height: {self._flight_data.h}"
+        )
+        self._pub_cmd_vel.publish(Twist())
+        req = TelloAction.Request()
+        req.cmd = f"rc 0 0 0 0"
+        self._call_service.call_async(req)
+        self._call_service.call_async(TelloAction.Request(cmd="land"))
+        self.get_logger().info("TelloARL node has been stopped")

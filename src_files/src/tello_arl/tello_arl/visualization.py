@@ -9,6 +9,9 @@ from scipy.spatial import transform
 from cv_bridge import CvBridge, CvBridgeError
 import cv2
 
+BAD_COLOR = (35, 22, 148)
+GOOD_COLOR = (148, 26, 22)
+
 
 class Visualization(Node):
     def __init__(self):
@@ -20,14 +23,29 @@ class Visualization(Node):
                 ("cmd_vel_topic", "/cmd_vel"),
                 ("aruco_topic", "/aruco_poses"),
                 ("flight_data_topic", "/flight_data"),
-                ("offset", 0.2),
+                ("offset_x", 0.2),
+                ("offset_y", 0.2),
+                ("offset_z", 0.2),
                 ("offset_rotation", 0.1),
                 ("camera_topic", "drone1/image_raw"),
+                ("distance", 1.0),
             ],
         )
         self.__init_variables()
 
-        self.offset = self.get_parameter("offset").get_parameter_value().double_value
+        self.distance = (
+            self.get_parameter("distance").get_parameter_value().double_value
+        )
+
+        self.offset_x = (
+            self.get_parameter("offset_x").get_parameter_value().double_value
+        )
+        self.offset_y = (
+            self.get_parameter("offset_y").get_parameter_value().double_value
+        )
+        self.offset_z = (
+            self.get_parameter("offset_z").get_parameter_value().double_value
+        )
         self.offset_rotation = (
             self.get_parameter("offset_rotation").get_parameter_value().double_value
         )
@@ -75,14 +93,16 @@ class Visualization(Node):
 
     def camera_callback(self, msg: Image):
         self.get_logger().debug("Camera callback")
-        ##### CONVERT #####
+
+        ##### Convert #####
         bridge = CvBridge()
         try:
             cv_image = bridge.imgmsg_to_cv2(msg, "bgr8")
         except CvBridgeError as e:
             cv_image = bridge.imgmsg_to_cv2(msg, "mono8")
-        ##### TEXT #####
-        font = (cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 0, 0), 1, cv2.LINE_AA)
+
+        ##### Default text #####
+        font = (cv2.FONT_HERSHEY_SIMPLEX, 0.8, GOOD_COLOR, 1, cv2.LINE_AA)
         cv_image = cv2.putText(
             cv_image,
             f"VEL:",
@@ -95,20 +115,20 @@ class Visualization(Node):
             (10, 80),
             *font,
         )
+
+        ##### Speed Params #####
         if self._twist is not None:
-            cv_image = cv2.putText(
-                cv_image,
-                f"{self._twist.linear.x:.2f}, {self._twist.linear.y:.2f}, {self._twist.linear.z:.2f}, {self._twist.angular.z:.2f}",
-                (70, 30),
-                *font,
-            )
+            self.draw_twist_params(cv_image, font)
+
+        __dist = 300
+
+        ##### Aruco Params #####
         if self._aruco_pose is not None:
-            cv_image = cv2.putText(
-                cv_image,
-                f"{self._aruco_pose.position.z:.2f}, {self._aruco_pose.position.x:.2f}, {self._aruco_pose.position.y:.2f}, {self.pitch:.2f}",
-                (70, 80),
-                *font,
-            )
+            if self._aruco_pose.position.z > 0:
+                __dist /= self._aruco_pose.position.z
+            self.draw_aruco_params(cv_image)
+
+        ##### Flight Params #####
         if self._flight_data is not None:
             cv_image = cv2.putText(
                 cv_image,
@@ -116,59 +136,24 @@ class Visualization(Node):
                 (cv_image.shape[1] - 200, 30),
                 *font,
             )
-        ##### DETECTED ARUCO #####
 
+        ##### Aruco Position #####
         if self._aruco_pose is not None:
             cv_image = cv2.circle(
                 cv_image,
                 (
-                    int(cv_image.shape[1] / 2 + self._aruco_pose.position.x * 100),
-                    int(cv_image.shape[0] / 2 + self._aruco_pose.position.y * 100),
+                    int(cv_image.shape[1] / 2 + self._aruco_pose.position.x * __dist),
+                    int(cv_image.shape[0] / 2 + self._aruco_pose.position.y * __dist),
                 ),
                 5,
-                (255, 0, 50),
+                GOOD_COLOR,
                 -1,
             )
 
-        ##### BORDER #####
-        border = ((0, 0, 255), 1)
-        cv_image = cv2.line(
-            cv_image,
-            (0, int(cv_image.shape[0] / 2 + self.offset * 100)),
-            (
-                cv_image.shape[1],
-                int(cv_image.shape[0] / 2 + self.offset * 100),
-            ),
-            *border,
-        )
-        cv_image = cv2.line(
-            cv_image,
-            (0, int(cv_image.shape[0] / 2 - self.offset * 100)),
-            (
-                cv_image.shape[1],
-                int(cv_image.shape[0] / 2 - self.offset * 100),
-            ),
-            *border,
-        )
-        cv_image = cv2.line(
-            cv_image,
-            (int(cv_image.shape[1] / 2 + self.offset * 100), 0),
-            (
-                int(cv_image.shape[1] / 2 + self.offset * 100),
-                cv_image.shape[0],
-            ),
-            *border,
-        )
-        cv_image = cv2.line(
-            cv_image,
-            (int(cv_image.shape[1] / 2 - self.offset * 100), 0),
-            (
-                int(cv_image.shape[1] / 2 - self.offset * 100),
-                cv_image.shape[0],
-            ),
-            *border,
-        )
-        ##### CONVERT #####
+        ##### Border #####
+        self.draw_border(cv_image, __dist)
+
+        ##### Convert to ros #####
         _image = bridge.cv2_to_imgmsg(cv_image, encoding="bgr8")
         self._last_pose = self._aruco_pose
         self._pub_image.publish(_image)
@@ -192,6 +177,102 @@ class Visualization(Node):
     def cmd_vel_callback(self, msg: Twist):
         self.get_logger().debug("Cmd vel callback")
         self._twist = msg
+
+    ########################### Draw functions #######################################
+
+    def draw_aruco_params(self, cv_image):
+        for ar_pos, position, offset in zip(
+            [
+                self._aruco_pose.position.z,
+                self._aruco_pose.position.x,
+                self._aruco_pose.position.y,
+                self.pitch,
+            ],
+            [80, 170, 260, 350],
+            [self.offset_x, self.offset_y, self.offset_z, self.offset_rotation],
+        ):
+
+            if abs(ar_pos) > offset and position != 80:
+                font = (cv2.FONT_HERSHEY_SIMPLEX, 0.8, BAD_COLOR, 1, cv2.LINE_AA)
+            elif (
+                abs(ar_pos) > offset + self.distance
+                or abs(ar_pos) < -offset + self.distance
+            ) and position == 80:
+                font = (cv2.FONT_HERSHEY_SIMPLEX, 0.8, BAD_COLOR, 1, cv2.LINE_AA)
+            else:
+                font = (cv2.FONT_HERSHEY_SIMPLEX, 0.8, GOOD_COLOR, 1, cv2.LINE_AA)
+
+            __text = f"{ar_pos:.2f}"
+            if ar_pos > 0:
+                __text = f"+{ar_pos:.2f}"
+
+            cv_image = cv2.putText(
+                cv_image,
+                __text,
+                (position, 80),
+                *font,
+            )
+
+    def draw_twist_params(self, cv_image, font):
+        for speed, position in zip(
+            [
+                self._aruco_pose.position.z,
+                self._aruco_pose.position.x,
+                self._aruco_pose.position.y,
+                self.pitch,
+            ],
+            [80, 170, 260, 350],
+        ):
+
+            __text = f"{speed:.2f}"
+            if speed > 0:
+                __text = f"+{speed:.2f}"
+
+            cv_image = cv2.putText(
+                cv_image,
+                __text,
+                (position, 30),
+                *font,
+            )
+
+    def draw_border(self, cv_image, __dist):
+        border = (BAD_COLOR, 1)
+        cv_image = cv2.line(
+            cv_image,
+            (0, int(cv_image.shape[0] / 2 + self.offset_x * __dist)),
+            (
+                cv_image.shape[1],
+                int(cv_image.shape[0] / 2 + self.offset_x * __dist),
+            ),
+            *border,
+        )
+        cv_image = cv2.line(
+            cv_image,
+            (0, int(cv_image.shape[0] / 2 - self.offset_x * __dist)),
+            (
+                cv_image.shape[1],
+                int(cv_image.shape[0] / 2 - self.offset_x * __dist),
+            ),
+            *border,
+        )
+        cv_image = cv2.line(
+            cv_image,
+            (int(cv_image.shape[1] / 2 + self.offset_y * __dist), 0),
+            (
+                int(cv_image.shape[1] / 2 + self.offset_y * __dist),
+                cv_image.shape[0],
+            ),
+            *border,
+        )
+        cv_image = cv2.line(
+            cv_image,
+            (int(cv_image.shape[1] / 2 - self.offset_y * __dist), 0),
+            (
+                int(cv_image.shape[1] / 2 - self.offset_y * __dist),
+                cv_image.shape[0],
+            ),
+            *border,
+        )
 
 
 def main(args=None):
