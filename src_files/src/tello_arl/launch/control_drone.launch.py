@@ -52,7 +52,6 @@ def generate_launch_description():
                     {"frequency": 10.0},
                     {"velocity_send_method": "ros_service"},  # ros_service or ros_topic
                     {"service_name": "/tello_action"},
-                    {"twist_real": -1},
                 ],
             ),
             Node(
@@ -68,6 +67,7 @@ def generate_launch_description():
                     {"offset_y": offset_y},
                     {"offset_z": offset_z},
                     {"offset_rotation": offset_R},
+                    {"distance": 1.0},
                 ],
             ),
         ]

@@ -6,7 +6,8 @@ from tello_msgs.srv import TelloAction
 from geometry_msgs.msg import Twist, Pose, PoseArray
 from sensor_msgs.msg import Image
 from scipy.spatial import transform
-from simple_pid import PID
+
+# from simple_pid import PID ### TODO: implement PID controller
 
 
 class TelloARL(Node):
@@ -226,30 +227,39 @@ class TelloARL(Node):
         if abs(__dist) > 3 * (__offset + __distance):
             return __speed * 3
 
-        if abs(__dist) > __offset + __distance:
+        if abs(__dist) > 2 * __offset + __distance:
             return __speed * abs(__dist) / (__offset + __distance)
         else:
             return __speed * abs(__dist) / (__offset + __distance) / 2
 
     def __set_limit_speed(self):
-        # TODO:
-        if self._twist.linear.x > self.speed_limit_linear:
-            self._twist.linear.x = self.speed_limit_linear
-        if self._twist.linear.y > self.speed_limit_linear:
-            self._twist.linear.y = self.speed_limit_linear
-        if self._twist.linear.z > self.speed_limit_linear:
-            self._twist.linear.z = self.speed_limit_linear
-        if self._twist.angular.z > self.speed_limit_angular:
-            self._twist.angular.z = self.speed_limit_angular
 
-        if self._twist.linear.x < -self.speed_limit_linear:
-            self._twist.linear.x = -self.speed_limit_linear
-        if self._twist.linear.y < -self.speed_limit_linear:
-            self._twist.linear.y = -self.speed_limit_linear
-        if self._twist.linear.z < -self.speed_limit_linear:
-            self._twist.linear.z = -self.speed_limit_linear
-        if self._twist.angular.z < -self.speed_limit_angular:
-            self._twist.angular.z = -self.speed_limit_angular
+        if abs(self._twist.linear.x) > self.speed_limit_linear:
+            self._twist.linear.x = (
+                self.speed_limit_linear
+                * abs(self._twist.linear.x)
+                / self._twist.linear.x
+            )
+
+        if abs(self._twist.linear.y) > self.speed_limit_linear:
+            self._twist.linear.y = (
+                self.speed_limit_linear
+                * abs(self._twist.linear.y)
+                / self._twist.linear.y
+            )
+        if abs(self._twist.linear.z) > self.speed_limit_linear:
+            self._twist.linear.z = (
+                self.speed_limit_linear
+                * abs(self._twist.linear.z)
+                / self._twist.linear.z
+            )
+
+        if abs(self._twist.angular.z) > self.speed_limit_angular:
+            self._twist.angular.z = (
+                self.speed_limit_angular
+                * abs(self._twist.angular.z)
+                / self._twist.angular.z
+            )
 
     def __send_cmd(self):
 

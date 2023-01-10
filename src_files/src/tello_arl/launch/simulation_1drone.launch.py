@@ -123,6 +123,7 @@ def generate_launch_description():
             {"offset_y": offset_y},
             {"offset_z": offset_z},
             {"offset_rotation": offset_R},
+            {"distance": 0.75},
         ],
     )
 
