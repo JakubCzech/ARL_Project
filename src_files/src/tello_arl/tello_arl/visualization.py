@@ -20,14 +20,24 @@ class Visualization(Node):
                 ("cmd_vel_topic", "/cmd_vel"),
                 ("aruco_topic", "/aruco_poses"),
                 ("flight_data_topic", "/flight_data"),
-                ("offset", 0.2),
+                ("offset_x", 0.2),
+                ("offset_y", 0.2),
+                ("offset_z", 0.2),
                 ("offset_rotation", 0.1),
                 ("camera_topic", "drone1/image_raw"),
             ],
         )
         self.__init_variables()
 
-        self.offset = self.get_parameter("offset").get_parameter_value().double_value
+        self.offset_x = (
+            self.get_parameter("offset_x").get_parameter_value().double_value
+        )
+        self.offset_y = (
+            self.get_parameter("offset_y").get_parameter_value().double_value
+        )
+        self.offset_z = (
+            self.get_parameter("offset_z").get_parameter_value().double_value
+        )
         self.offset_rotation = (
             self.get_parameter("offset_rotation").get_parameter_value().double_value
         )
@@ -134,36 +144,36 @@ class Visualization(Node):
         border = ((0, 0, 255), 1)
         cv_image = cv2.line(
             cv_image,
-            (0, int(cv_image.shape[0] / 2 + self.offset * 100)),
+            (0, int(cv_image.shape[0] / 2 + self.offset_x * 100)),
             (
                 cv_image.shape[1],
-                int(cv_image.shape[0] / 2 + self.offset * 100),
+                int(cv_image.shape[0] / 2 + self.offset_x * 100),
             ),
             *border,
         )
         cv_image = cv2.line(
             cv_image,
-            (0, int(cv_image.shape[0] / 2 - self.offset * 100)),
+            (0, int(cv_image.shape[0] / 2 - self.offset_x * 100)),
             (
                 cv_image.shape[1],
-                int(cv_image.shape[0] / 2 - self.offset * 100),
+                int(cv_image.shape[0] / 2 - self.offset_x * 100),
             ),
             *border,
         )
         cv_image = cv2.line(
             cv_image,
-            (int(cv_image.shape[1] / 2 + self.offset * 100), 0),
+            (int(cv_image.shape[1] / 2 + self.offset_y * 100), 0),
             (
-                int(cv_image.shape[1] / 2 + self.offset * 100),
+                int(cv_image.shape[1] / 2 + self.offset_y * 100),
                 cv_image.shape[0],
             ),
             *border,
         )
         cv_image = cv2.line(
             cv_image,
-            (int(cv_image.shape[1] / 2 - self.offset * 100), 0),
+            (int(cv_image.shape[1] / 2 - self.offset_y * 100), 0),
             (
-                int(cv_image.shape[1] / 2 - self.offset * 100),
+                int(cv_image.shape[1] / 2 - self.offset_y * 100),
                 cv_image.shape[0],
             ),
             *border,

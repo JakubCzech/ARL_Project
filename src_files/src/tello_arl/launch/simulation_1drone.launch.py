@@ -31,6 +31,10 @@ def generate_launch_description():
     aruco_markers_topic = "/aruco_markers"
     cmd_vel_topic = "/drone1/cmd_vel"
     flight_data_topic = "/drone1/flight_data"
+    offset_x = 0.1
+    offset_y = 0.1
+    offset_z = 0.1
+    offset_R = 0.2
 
     drone_state = Node(
         package="robot_state_publisher",
@@ -90,13 +94,17 @@ def generate_launch_description():
             {"cmd_vel_topic": cmd_vel_topic},
             {"flight_data_topic": flight_data_topic},
             {"log_level": 20},
-            {"speed_linear": 0.5},
-            {"speed_angular": 0.75},
+            {"speed_horizontal": 0.5},
+            {"speed_vertical": 0.3},
+            {"speed_frontal": 0.5},
+            {"speed_angular": 1.0},
             {"distance": 0.75},
-            {"offset": 0.2},
-            {"offset_rotation": 0.05},
+            {"offset_x": offset_x},
+            {"offset_y": offset_y},
+            {"offset_z": offset_z},
+            {"offset_rotation": offset_R},
             {"frequency": 10.0},
-            {"limit_linear": 0.5},
+            {"limit_linear": 1.5},
             {"limit_angular": 1.0},
             {"velocity_send_method": "ros_topic"},  # ros_service or ros_topic
             {"service_name": "/drone1/tello_action"},
@@ -111,8 +119,10 @@ def generate_launch_description():
             {"aruco_topic": aruco_poses_topic},
             {"flight_data_topic": flight_data_topic},
             {"cmd_vel_topic": cmd_vel_topic},
-            {"offset": 0.1},
-            {"offset_rotation": 0.05},
+            {"offset_x": offset_x},
+            {"offset_y": offset_y},
+            {"offset_z": offset_z},
+            {"offset_rotation": offset_R},
         ],
     )
 

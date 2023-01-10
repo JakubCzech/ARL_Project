@@ -9,6 +9,10 @@ def generate_launch_description():
     aruco_markers_topic = "/aruco_markers"
     cmd_vel_topic = "/cmd_vel"
     flight_data_topic = "/flight_data"
+    offset_x = 0.1
+    offset_y = 0.1
+    offset_z = 0.1
+    offset_R = 0.15
 
     return LaunchDescription(
         [
@@ -34,12 +38,16 @@ def generate_launch_description():
                     {"cmd_vel_topic": cmd_vel_topic},
                     {"flight_data_topic": flight_data_topic},
                     {"log_level": 20},
-                    {"speed_linear": 1.0},  # 100.0 / 5.0pos
-                    {"speed_angular": 10.0},  # 100.0 / 5.0
+                    {"speed_horizontal": 15.0},
+                    {"speed_vertical": 10.0},
+                    {"speed_frontal": 15.0},
+                    {"speed_angular": 30.0},
                     {"distance": 1.0},
-                    {"offset": 0.1},
-                    {"offset_rotation": 0.15},
-                    {"limit_linear": 1.0},
+                    {"offset_x": offset_x},
+                    {"offset_y": offset_y},
+                    {"offset_z": offset_z},
+                    {"offset_rotation": offset_R},
+                    {"limit_linear": 50.0},
                     {"limit_angular": 30.0},
                     {"frequency": 10.0},
                     {"velocity_send_method": "ros_service"},  # ros_service or ros_topic
@@ -56,8 +64,10 @@ def generate_launch_description():
                     {"flight_data_topic": flight_data_topic},
                     {"cmd_vel_topic": cmd_vel_topic},
                     {"camera_topic": image_topic},
-                    {"offset": 0.1},
-                    {"offset_rotation": 0.05},
+                    {"offset_x": offset_x},
+                    {"offset_y": offset_y},
+                    {"offset_z": offset_z},
+                    {"offset_rotation": offset_R},
                 ],
             ),
         ]
