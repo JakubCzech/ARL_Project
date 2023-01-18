@@ -21,7 +21,7 @@ def generate_launch_description():
                 executable="aruco_node",
                 name="aruco_node",
                 parameters=[
-                    {"marker_size": 0.07},
+                    {"marker_size": 0.17},
                     {"aruco_dictionary_id": "DICT_ARUCO_ORIGINAL"},
                     {"image_topic": image_topic},
                     {"camera_info_topic": camera_info_topic},
@@ -69,6 +69,12 @@ def generate_launch_description():
                     {"offset_rotation": offset_R},
                     {"distance": 1.0},
                 ],
+            ),
+            Node(
+                package="rqt_image_view",
+                executable="rqt_image_view",
+                output="screen",
+                arguments=["visualization"],
             ),
         ]
     )
