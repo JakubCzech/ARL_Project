@@ -216,10 +216,10 @@ class Visualization(Node):
     def draw_twist_params(self, cv_image, font):
         for speed, position in zip(
             [
-                self._aruco_pose.position.z,
-                self._aruco_pose.position.x,
-                self._aruco_pose.position.y,
-                self.pitch,
+                self._twist.linear.x,
+                self._twist.linear.y,
+                self._twist.linear.z,
+                self._twist.angular.z,
             ],
             [80, 170, 260, 350],
         ):

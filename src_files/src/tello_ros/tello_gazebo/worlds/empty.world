@@ -22,13 +22,6 @@
       <uri>model://sun</uri>
     </include>
 
-    <model name="marker1">
-      <include>
-        <static>true</static>
-        <uri>model://marker_1</uri>
-      </include>
-      <pose>03.0 0.0 0.8 0 -1.5707963267948966 0</pose>
-    </model>
 
   </world>
 </sdf>

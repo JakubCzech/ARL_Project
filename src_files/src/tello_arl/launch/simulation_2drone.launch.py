@@ -23,32 +23,39 @@ from launch.event_handlers import (
 def generate_launch_description():
     ns = "drone1"
     ns2 = "drone2"
-    world_path = os.path.join(
-        get_package_share_directory("tello_gazebo"), "worlds", "f2.world"
-    )
-    urdf_path = os.path.join(
-        get_package_share_directory("tello_description"), "urdf", "tello_1.urdf"
-    )
-    urdf_path2 = os.path.join(
-        get_package_share_directory("tello_description_arl"), "urdf", "tello_2.urdf"
-    )
+    world_path = os.path.join(get_package_share_directory("tello_gazebo"), "worlds", "empty.world")
+    urdf_path = os.path.join(get_package_share_directory("tello_description"), "urdf", "tello_1.urdf")
+    urdf_path2 = os.path.join(get_package_share_directory("tello_description_arl"), "urdf", "tello_2.urdf")
+    image_topic = "/drone1/image_raw"
+    camera_info_topic = "/drone1/camera_info"
+    aruco_poses_topic = "/aruco_poses"
+    aruco_markers_topic = "/aruco_markers"
+    cmd_vel_topic = "/drone1/cmd_vel"
+    flight_data_topic = "/drone1/flight_data"
+    offset_x = 0.025
+    offset_y = 0.025
+    offset_z = 0.025
+    offset_R = 0.15
+
     drone_state_1 = Node(
         package="robot_state_publisher",
         executable="robot_state_publisher",
         output="screen",
         arguments=[urdf_path],
+        namespace=ns2,
     )
     drone_state_2 = Node(
         package="robot_state_publisher",
         executable="robot_state_publisher",
         output="screen",
         arguments=[urdf_path2],
+        namespace=ns2,
     )
     image = Node(
         package="rqt_image_view",
         executable="rqt_image_view",
         output="screen",
-        arguments=["/drone1/image_raw"],
+        arguments=["visualization"],
     )
     start_gazebo = ExecuteProcess(
         cmd=[
@@ -96,7 +103,7 @@ def generate_launch_description():
         package="tello_gazebo",
         executable="inject_entity.py",
         output="screen",
-        arguments=[urdf_path2, "1", "1", "1", "0"],
+        arguments=[urdf_path2, "1", "0", "1", "0"],
     )
     tello_driver_1 = Node(
         package="tello_driver",
@@ -115,12 +122,12 @@ def generate_launch_description():
         executable="aruco_node",
         name="aruco_node",
         parameters=[
-            {"marker_size": 0.0625},
-            {"aruco_dictionary_id": "DICT_6X6_100"},
-            {"image_topic": "/drone1/image_raw"},
-            {"camera_info_topic": "/drone1/camera_info"},
-            {"aruco_poses_topic": "/aruco_poses"},
-            {"aruco_markers_topic": "/aruco_markers"},
+            {"marker_size": 0.07},
+            {"aruco_dictionary_id": "DICT_ARUCO_ORIGINAL"},
+            {"image_topic": image_topic},
+            {"camera_info_topic": camera_info_topic},
+            {"aruco_poses_topic": aruco_poses_topic},
+            {"aruco_markers_topic": aruco_markers_topic},
         ],
     )
     controller_ = Node(
@@ -128,35 +135,76 @@ def generate_launch_description():
         executable="controller",
         name="controller",
         parameters=[
-            {"aruco_topic": "/aruco_poses"},
-            {"cmd_vel_topic": "/drone1/cmd_vel"},
-            {"flight_data_topic": "/drone1/flight_data"},
-            {"log_level": 40},
-            {"speed": 0.001},
-            {"distance": 1.0},
-            {"offset": 0.05},
-            {"offset_rotation": 0.05},
+            {"flight_data_topic": flight_data_topic},
+            {"aruco_topic": aruco_poses_topic},
+            {"cmd_vel_topic": cmd_vel_topic},
+            {"log_level": 50},
+            {"speed_horizontal": 0.2},
+            {"speed_vertical": 0.2},
+            {"speed_front": 0.25},
+            {"speed_back": 0.15},
+            {"speed_angular": 0.15},
+            {"distance": 0.75},
+            {"offset_x": offset_x},
+            {"offset_y": offset_y},
+            {"offset_z": offset_z},
+            {"offset_rotation": offset_R},
             {"frequency": 10.0},
             {"velocity_send_method": "ros_topic"},  # ros_service or ros_topic
             {"service_name": "/drone1/tello_action"},
+            {"simulation": True},
         ],
     )
+    visualization_ = Node(
+        package="tello_arl",
+        executable="visualization",
+        name="visualization",
+        parameters=[
+            {"aruco_topic": aruco_poses_topic},
+            {"flight_data_topic": flight_data_topic},
+            {"cmd_vel_topic": cmd_vel_topic},
+            {"offset_x": offset_x},
+            {"offset_y": offset_y},
+            {"offset_z": offset_z},
+            {"offset_rotation": offset_R},
+            {"distance": 0.75},
+        ],
+    )
+
     return LaunchDescription(
         [
             start_gazebo,
             inject_entity_1,
-            inject_entity_2,
             drone_state_1,
+            tello_driver_1,
+            RegisterEventHandler(
+                OnProcessStart(
+                    target_action=tello_driver_1,
+                    on_start=[aruco_],
+                )
+            ),
+            inject_entity_2,
             drone_state_2,
             # Joystick driver, generates /namespace/joy messages
             Node(package="joy", executable="joy_node", output="screen", namespace=ns2),
             # Joystick controller, generates /namespace/cmd_vel messages
-            tello_driver_1,
             tello_driver_2,
             RegisterEventHandler(
                 OnProcessStart(
                     target_action=tello_driver_2,
-                    on_start=[drone_2_take_off, aruco_, controller_, image],
+                    on_start=[drone_2_take_off],
+                )
+            ),
+            # RegisterEventHandler(
+            #     OnProcessStart(
+            #         target_action=tello_driver_1,
+            #         on_start=[drone_1_take_off],
+            #     )
+            # ),
+            RegisterEventHandler(
+                OnProcessStart(
+                    target_action=drone_state_1,
+                    on_start=[controller_, image, visualization_],
                 )
             ),
         ]

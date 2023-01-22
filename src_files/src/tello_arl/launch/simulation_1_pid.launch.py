@@ -19,19 +19,22 @@ from launch.event_handlers import (
 
 def generate_launch_description():
     ns = "drone1"
-    world_path = os.path.join(get_package_share_directory("tello_gazebo"), "worlds", "f2.world")
-    urdf_path = os.path.join(get_package_share_directory("tello_description"), "urdf", "tello_1.urdf")
-
+    world_path = os.path.join(
+        get_package_share_directory("tello_gazebo"), "worlds", "f2.world"
+    )
+    urdf_path = os.path.join(
+        get_package_share_directory("tello_description"), "urdf", "tello_1.urdf"
+    )
     image_topic = "/drone1/image_raw"
     camera_info_topic = "/drone1/camera_info"
     aruco_poses_topic = "/aruco_poses"
     aruco_markers_topic = "/aruco_markers"
     cmd_vel_topic = "/drone1/cmd_vel"
     flight_data_topic = "/drone1/flight_data"
-    offset_x = 0.025
-    offset_y = 0.025
-    offset_z = 0.025
-    offset_R = 0.15
+    offset_x = 0.1
+    offset_y = 0.1
+    offset_z = 0.1
+    offset_R = 0.2
 
     drone_state = Node(
         package="robot_state_publisher",
@@ -91,16 +94,11 @@ def generate_launch_description():
             {"cmd_vel_topic": cmd_vel_topic},
             {"flight_data_topic": flight_data_topic},
             {"log_level": 20},
-            {"speed_horizontal": 0.2},
-            {"speed_vertical": 0.2},
-            {"speed_front": 0.25},
-            {"speed_back": 0.15},
-            {"speed_angular": 0.15},
+            {"speed_horizontal": 0.1},
+            {"speed_vertical": 0.1},
+            {"speed_frontal": 0.1},
+            {"speed_angular": 0.1},
             {"distance": 0.75},
-            {"offset_x": offset_x},
-            {"offset_y": offset_y},
-            {"offset_z": offset_z},
-            {"offset_rotation": offset_R},
             {"frequency": 10.0},
             {"velocity_send_method": "ros_topic"},  # ros_service or ros_topic
             {"service_name": "/drone1/tello_action"},

@@ -7,5 +7,8 @@ ros2 topic echo /drone1/aruco_poses
 colcon build && ros2 launch tello_arl control_drone.launch.py
 ros2 launch tello_driver teleop_launch.py
 source install/setup.bash
+export ROS_DOMAIN_ID=33
+colcon build && ros2 launch tello_arl simulation_2drone.launch.py
+
 
 

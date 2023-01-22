@@ -11,7 +11,7 @@ def main(args=None):
     try:
         rclpy.spin(tello_arl)
     except KeyboardInterrupt:
-        pass
+        tello_arl.__del__()
     finally:
         tello_arl.destroy_node()
         rclpy.shutdown()
