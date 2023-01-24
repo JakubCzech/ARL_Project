@@ -23,9 +23,15 @@ from launch.event_handlers import (
 def generate_launch_description():
     ns = "drone1"
     ns2 = "drone2"
-    world_path = os.path.join(get_package_share_directory("tello_gazebo"), "worlds", "empty.world")
-    urdf_path = os.path.join(get_package_share_directory("tello_description"), "urdf", "tello_1.urdf")
-    urdf_path2 = os.path.join(get_package_share_directory("tello_description_arl"), "urdf", "tello_2.urdf")
+    world_path = os.path.join(
+        get_package_share_directory("tello_gazebo"), "worlds", "empty.world"
+    )
+    urdf_path = os.path.join(
+        get_package_share_directory("tello_description"), "urdf", "tello_1.urdf"
+    )
+    urdf_path2 = os.path.join(
+        get_package_share_directory("tello_description_arl"), "urdf", "tello_2.urdf"
+    )
     image_topic = "/drone1/image_raw"
     camera_info_topic = "/drone1/camera_info"
     aruco_poses_topic = "/aruco_poses"
