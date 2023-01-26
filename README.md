@@ -11,7 +11,7 @@
 5. Odtworzenie lotu
 
 ### Finalny rezultat
-Ostatecznie udało nam się zrealizować aplikacje umożliwiającą podążanie jednego drona za drugim przy pomocy taga aruco. Znaczną część projektu stanowiła optymalizacja i dobór nastaw prędkości dla podążającego drona. Mimo ograniczonych możliwości testowania programu na dronach w laboratorium udało się nam uzyskać oczekiwany efekt. Od początku trwania projektu zakładaliśmy, że ostatni punkt planu jest opcjonalny, ponieważ realizacja takiej funkcjonalności wymagałaby dodania osobnej logiki programu. Efekt odtworzenia lotu, byłby jednak efektowną funkcją, więc może stanowić punt wyjścia do dalszego rozwoju projektu. Głowne założenie podążania dronem za drugą jednostką zostało w pełni wykonane.
+Ostatecznie udało nam się zrealizować aplikacje umożliwiającą podążanie jednego drona za drugim przy pomocy taga aruco. Znaczną część projektu stanowiła optymalizacja i dobór nastaw prędkości dla podążającego drona. Mimo ograniczonych możliwości testowania programu na dronach w laboratorium udało się nam uzyskać oczekiwany efekt. Od początku trwania projektu zakładaliśmy, że ostatni punkt planu jest opcjonalny, ponieważ realizacja takiej funkcjonalności wymagałaby dodania osobnej logiki programu. Efekt odtworzenia lotu, byłby jednak efektowną funkcją, więc może stanowić punt wyjścia do dalszego rozwoju projektu. Główne założenie podążania dronem za drugą jednostką zostało w pełni wykonane.
 
 ## Instalacja
 
